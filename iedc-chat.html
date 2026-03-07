@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- ADDED: Jitsi Meet External API for Real Video/Audio Calls -->
+    <script src="https://meet.jit.si/external_api.js"></script>
 
     <script>
         tailwind.config = {
@@ -146,28 +149,34 @@
 
     <div class="bg-overlay"></div>
 
-    <!-- CALL OVERLAY (Hidden by default) -->
-    <div id="callOverlay" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[1000] hidden flex-col items-center justify-center text-white transition-opacity duration-500 opacity-0">
-        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2000')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
-        <div class="relative z-10 text-center mb-12 flex flex-col items-center">
-            <div id="callAvatar" class="w-32 h-32 rounded-full mb-6 border-4 border-white/10 shadow-[0_0_50px_rgba(59,130,246,0.3)] animate-pulse bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-5xl">
-                <i class="fas fa-globe text-white"></i>
+    <!-- REAL CALL OVERLAY (Modified to host Jitsi iframe) -->
+    <div id="callOverlay" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[1000] hidden flex-col items-center justify-center p-2 md:p-8 transition-opacity duration-500 opacity-0">
+        <div class="w-full h-full max-w-[1400px] relative bg-[#0f1115] border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
+            
+            <!-- Call Header -->
+            <div class="p-4 md:px-8 md:py-4 flex justify-between items-center bg-white/5 border-b border-white/5 shrink-0 z-10 relative backdrop-blur-md">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-[0_0_15px_rgba(59,130,246,0.4)]">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-white font-bold text-lg leading-tight" id="jitsiRoomName">Group Call</h2>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                            <p class="text-white/50 text-[10px] uppercase tracking-widest font-bold" id="jitsiCallType">Live Call</p>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="endCall()" class="bg-red-500/20 hover:bg-red-600 border border-red-500/30 text-red-500 hover:text-white px-6 py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-lg text-xs font-bold uppercase tracking-widest">
+                    <i class="fas fa-phone-slash"></i> <span class="hidden sm:inline">End Call</span>
+                </button>
             </div>
-            <h2 id="callTypeLabel" class="text-blue-400 text-xs font-bold uppercase tracking-[0.2em] mb-2">Calling...</h2>
-            <h1 id="callNameLabel" class="text-4xl md:text-5xl font-bold tracking-tight mb-4">IEDC Global Network</h1>
-            <p id="callTimer" class="text-lg font-mono text-white/70 tracking-widest">Connecting...</p>
-        </div>
-        
-        <div class="relative z-10 flex items-center justify-center gap-6 mt-8">
-            <button class="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-all backdrop-blur-md">
-                <i class="fas fa-microphone text-white"></i>
-            </button>
-            <button class="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-all backdrop-blur-md">
-                <i class="fas fa-video text-white"></i>
-            </button>
-            <button onclick="endCall()" class="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-3xl transition-all shadow-[0_0_30px_rgba(239,68,68,0.5)] transform hover:scale-105">
-                <i class="fas fa-phone-slash text-white"></i>
-            </button>
+            
+            <!-- Jitsi Meet Container -->
+            <div id="jitsi-container" class="flex-grow w-full h-full relative z-0 bg-black">
+                <!-- Iframe injected here via JS -->
+            </div>
+            
         </div>
     </div>
 
@@ -632,58 +641,7 @@
             document.getElementById('main-app').classList.remove('mobile-view-chat');
         }
 
-        // Call Overlays Logic (Video / Voice)
-        let callTimerInterval;
-        let callSeconds = 0;
-
-        window.startCall = function(type) {
-            const overlay = document.getElementById('callOverlay');
-            const typeLabel = document.getElementById('callTypeLabel');
-            const timerLabel = document.getElementById('callTimer');
-            const nameLabel = document.getElementById('callNameLabel');
-            const headerTitle = document.getElementById('activeChatTitle');
-            
-            // Map context
-            nameLabel.textContent = headerTitle ? headerTitle.textContent : "Unknown Call";
-            typeLabel.textContent = type === 'video' ? 'Outgoing Video Call...' : 'Outgoing Voice Call...';
-            timerLabel.textContent = 'Calling...';
-            callSeconds = 0;
-
-            overlay.classList.remove('hidden');
-            // Force browser reflow to ensure transition runs
-            void overlay.offsetWidth;
-            overlay.classList.remove('opacity-0');
-            overlay.classList.add('opacity-100');
-
-            // Simulate call picking up
-            setTimeout(() => {
-                if(!overlay.classList.contains('hidden')) {
-                    typeLabel.textContent = type === 'video' ? 'Video Call Active' : 'Voice Call Active';
-                    callTimerInterval = setInterval(() => {
-                        callSeconds++;
-                        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
-                        const secs = String(callSeconds % 60).padStart(2, '0');
-                        timerLabel.textContent = `${mins}:${secs}`;
-                    }, 1000);
-                }
-            }, 2500);
-        };
-
-        window.endCall = function() {
-            const overlay = document.getElementById('callOverlay');
-            clearInterval(callTimerInterval);
-            
-            document.getElementById('callTypeLabel').textContent = 'Call Ended';
-            document.getElementById('callTimer').textContent = '';
-            
-            setTimeout(() => {
-                overlay.classList.remove('opacity-100');
-                overlay.classList.add('opacity-0');
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                }, 500); // Wait for CSS transition
-            }, 800);
-        };
+        // REAL VIDEO/VOICE CALL LOGIC WILL BE INJECTED FROM THE MODULE SCRIPT
     </script>
 
     <!-- Firebase Application Logic -->
@@ -720,6 +678,9 @@
         
         let allGroups = [];
         let currentMessages = [];
+        
+        // Jitsi API Instance
+        let jitsiApi = null;
 
         // DOM Setup
         lucide.createIcons();
@@ -794,6 +755,9 @@
                     } else if (user.displayName) { currentUserName = user.displayName; } 
                     else if (user.email) { currentUserName = user.email.split('@')[0]; }
                 } catch(e) { console.error(e); }
+                
+                // EXPOSE FOR JITSI TO USE
+                window.currentUserName = currentUserName;
 
                 document.getElementById('myName').textContent = currentUserName.split(' ')[0];
                 document.getElementById('myAvatar').src = currentUserAvatar;
@@ -922,6 +886,8 @@
         // 4. Open Group & Listen to Messages
         window.openGroup = async function(groupId) {
             activeGroupId = groupId;
+            window.activeGroupId = groupId; // EXPOSE FOR JITSI
+
             document.getElementById('emptyChatState').classList.add('hidden');
             document.getElementById('activeChatContainer').classList.remove('hidden');
             document.getElementById('groupInfoPanel').classList.remove('open');
@@ -1287,6 +1253,103 @@
         document.getElementById('messageSearchInput').addEventListener('input', (e) => {
             renderMessages(currentMessages, e.target.value);
         });
+
+        // 10. REAL VIDEO/VOICE CALLS (JITSI MEET INTEGRATION)
+        window.startCall = function(type) {
+            if (!window.activeGroupId) {
+                alert("Please open a chat group first to start a call.");
+                return;
+            }
+
+            const overlay = document.getElementById('callOverlay');
+            const container = document.getElementById('jitsi-container');
+            const roomLabel = document.getElementById('jitsiRoomName');
+            const typeLabel = document.getElementById('jitsiCallType');
+
+            // Set Header Text
+            const chatTitle = document.getElementById('activeChatTitle').textContent;
+            roomLabel.textContent = chatTitle;
+            typeLabel.textContent = type === 'video' ? 'Live Video Call' : 'Live Audio Call';
+
+            // Show Overlay
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0');
+                overlay.classList.add('opacity-100');
+            }, 10);
+
+            // Clean up previous instance if any
+            if (jitsiApi) {
+                jitsiApi.dispose();
+                jitsiApi = null;
+            }
+            container.innerHTML = '';
+
+            // Unique Room Name based on Firebase Group ID
+            // Using a strict prefix to avoid accidental overlaps with public Jitsi rooms
+            const safeRoomName = "IEDC_Connect_GroupCall_" + window.activeGroupId.replace(/[^a-zA-Z0-9]/g, '');
+
+            const domain = 'meet.jit.si';
+            const options = {
+                roomName: safeRoomName,
+                width: '100%',
+                height: '100%',
+                parentNode: container,
+                userInfo: {
+                    displayName: window.currentUserName || "IEDC Member"
+                },
+                configOverwrite: {
+                    startAudioOnly: type === 'audio',
+                    prejoinPageEnabled: false, // Skip pre-join screen, jump right in
+                    disableDeepLinking: true   // Prevents mobile from trying to open Jitsi native app
+                },
+                interfaceConfigOverwrite: {
+                    SHOW_JITSI_WATERMARK: false,
+                    SHOW_WATERMARK_FOR_GUESTS: false,
+                    TOOLBAR_BUTTONS: [
+                        'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
+                        'fodeviceselection', 'hangup', 'profile', 'chat', 'settings',
+                        'videoquality', 'filmstrip', 'feedback', 'shortcuts',
+                        'tileview', 'videobackgroundblur', 'mute-everyone'
+                    ],
+                }
+            };
+
+            // Initialize Jitsi Meet
+            jitsiApi = new JitsiMeetExternalAPI(domain, options);
+
+            // Send an automated chat message declaring a call started
+            try {
+                addDoc(collection(db, "group_chats", window.activeGroupId, "messages"), {
+                    text: `${window.currentUserName} started a ${type} call. Join via the top menu!`,
+                    type: "system",
+                    timestamp: serverTimestamp()
+                });
+            } catch(e) { console.error("Silent system message error:", e); }
+
+            // Automatically close overlay when user clicks the red hangup phone inside Jitsi
+            jitsiApi.addEventListener('videoConferenceLeft', () => {
+                window.endCall();
+            });
+        };
+
+        window.endCall = function() {
+            const overlay = document.getElementById('callOverlay');
+            
+            // Dispose Jitsi instance properly to kill camera/mic streams
+            if (jitsiApi) {
+                jitsiApi.dispose();
+                jitsiApi = null;
+            }
+            
+            // Hide Overlay
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                document.getElementById('jitsi-container').innerHTML = '';
+            }, 500); // Wait for CSS transition
+        };
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await signOut(auth);
