@@ -19,7 +19,7 @@
             "background_color": "#0f1115",
             "theme_color": "#0f1115",
             "icons": [
-                {
+                 {
                     "src": "assets/images/logos/MSEM.jpg",
                     "sizes": "192x192",
                     "type": "image/jpeg"
@@ -36,14 +36,15 @@
         const manifestURL = URL.createObjectURL(blob);
         document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestURL}">`);
         
-        // Simple Service Worker Registration for PWA Installability
+        // FIXED Service Worker: Properly routes requests instead of swallowing them
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                // Creates a dummy service worker just to pass PWA install criteria
                 const swCode = `
                     self.addEventListener('install', (e) => { self.skipWaiting(); });
                     self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
-                    self.addEventListener('fetch', (e) => { });
+                    self.addEventListener('fetch', (e) => { 
+                        e.respondWith(fetch(e.request).catch(() => new Response('Network error')));
+                    });
                 `;
                 const swBlob = new Blob([swCode], {type: 'application/javascript'});
                 const swUrl = URL.createObjectURL(swBlob);
@@ -57,7 +58,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- ADDED: Jitsi Meet External API for Real Video/Audio Calls -->
+    <!-- Jitsi Meet External API for Real Video/Audio Calls -->
     <script src="https://meet.jit.si/external_api.js"></script>
 
     <script>
@@ -97,7 +98,6 @@
             font-family: 'Inter', sans-serif;
             overflow: hidden;
             color: #ffffff;
-            /* PWA specific adjustments */
             -webkit-user-select: none;
             user-select: none;
         }
@@ -148,7 +148,6 @@
 
         .scrollbar-hide::-webkit-scrollbar { display: none; }
 
-        /* Dynamic Chat Bubbles based on CSS variables */
         .bubble-in {
             background: var(--bubble-in-color);
             border: 1px solid var(--bubble-in-border);
@@ -165,7 +164,6 @@
         .glass-hover { transition: all 0.3s ease; }
         .glass-hover:hover { background: rgba(255, 255, 255, 0.08); }
 
-        /* Group Info Sliding Panel */
         .slide-panel {
             transform: translateX(100%);
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -174,23 +172,12 @@
             transform: translateX(0);
         }
 
-        /* Toggle Switch Styling */
-        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
-        .toggle-checkbox { right: 0; z-index: 1; border-color: #e2e8f0; transition: all 0.3s ease; }
-        .toggle-label { width: 36px; height: 20px; background-color: rgba(255,255,255,0.2); border-radius: 9999px; transition: all 0.3s ease; }
-
         @media (max-width: 1024px) {
             .mobile-view-chat #col-list { display: none; }
             .mobile-view-chat #col-chat { display: flex; }
             #col-chat { display: none; }
             #col-list { display: flex; width: 100%; }
             
-            /* PWA specific padding for mobile notches */
-            body {
-                padding-top: env(safe-area-inset-top);
-                padding-bottom: env(safe-area-inset-bottom);
-            }
             .app-container {
                 border-radius: 0;
                 border: none;
@@ -222,9 +209,7 @@
             animation: ring 2s infinite ease-out;
             z-index: -1;
         }
-        .animate-ring::after {
-            animation-delay: 1s;
-        }
+        .animate-ring::after { animation-delay: 1s; }
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center p-0 lg:p-12 relative">
@@ -244,15 +229,12 @@
         </div>
         
         <div class="relative z-10 flex items-center justify-center gap-12">
-            <!-- Decline Button -->
             <button onclick="declineCall()" class="flex flex-col items-center gap-3 group">
                 <div class="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-2xl transition-all shadow-[0_0_30px_rgba(239,68,68,0.3)] transform group-hover:scale-105">
                     <i class="fas fa-phone-slash text-white"></i>
                 </div>
                 <span class="text-white/70 text-xs font-bold uppercase tracking-widest group-hover:text-white">Decline</span>
             </button>
-
-            <!-- Answer Button -->
             <button onclick="answerCall()" class="flex flex-col items-center gap-3 group">
                 <div class="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center text-2xl transition-all shadow-[0_0_30px_rgba(34,197,94,0.3)] transform group-hover:scale-105 animate-bounce">
                     <i class="fas fa-video text-white" id="incomingAcceptIcon"></i>
@@ -260,7 +242,6 @@
                 <span class="text-white/70 text-xs font-bold uppercase tracking-widest group-hover:text-white">Answer</span>
             </button>
         </div>
-        <!-- Hidden Audio Element for Ringtone -->
         <audio id="ringtoneAudio" loop>
             <source src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" type="audio/mpeg">
         </audio>
@@ -269,8 +250,6 @@
     <!-- ACTIVE CALL JITSI OVERLAY -->
     <div id="callOverlay" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[1000] hidden flex-col items-center justify-center p-0 lg:p-8 transition-opacity duration-500 opacity-0">
         <div class="w-full h-full max-w-[1400px] relative bg-[#0f1115] border-0 lg:border border-white/10 lg:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-            
-            <!-- Call Header -->
             <div class="p-4 md:px-8 md:py-4 flex justify-between items-center bg-white/5 border-b border-white/5 shrink-0 z-10 relative backdrop-blur-md">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-[0_0_15px_rgba(59,130,246,0.4)]">
@@ -288,16 +267,9 @@
                     <i class="fas fa-phone-slash"></i> <span class="hidden sm:inline">Leave Call</span>
                 </button>
             </div>
-            
-            <!-- Jitsi Meet Container -->
-            <div id="jitsi-container" class="flex-grow w-full h-full relative z-0 bg-black">
-                <!-- Iframe injected here via JS -->
-            </div>
-            
+            <div id="jitsi-container" class="flex-grow w-full h-full relative z-0 bg-black"></div>
         </div>
     </div>
-
-    <!-- MODALS -->
 
     <!-- Create Group Modal -->
     <div id="createGroupModal" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-4 transition-opacity opacity-0 pt-[env(safe-area-inset-top)]">
@@ -326,12 +298,11 @@
         </div>
     </div>
 
-    <!-- Customization / Theme Modal -->
+    <!-- Theme Modal -->
     <div id="themeModal" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-4 transition-opacity opacity-0 pt-[env(safe-area-inset-top)]">
         <div class="bg-[#151515] border border-white/10 w-full max-w-md rounded-3xl p-8 shadow-2xl relative transform transition-transform scale-95 duration-300">
             <button onclick="closeModal('themeModal')" class="absolute top-6 right-6 text-white/50 hover:text-white p-2"><i class="fas fa-times"></i></button>
             <h2 class="text-xl font-bold text-white mb-6">Chat Customization</h2>
-            
             <div class="space-y-6">
                 <div>
                     <label class="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-3 block">Chat Background</label>
@@ -341,33 +312,20 @@
                         <button onclick="setWallpaper('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600')" class="h-20 rounded-xl bg-cover bg-center border border-white/20 hover:border-white transition" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200')"></button>
                     </div>
                 </div>
-
                 <div>
                     <label class="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-3 block">Message Theme</label>
                     <div class="grid grid-cols-2 gap-3">
-                        <button onclick="setBubbleTheme('blue')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition">
-                            <div class="w-1/2 h-4 rounded-full bg-blue-500/20 self-end border border-blue-500/30"></div>
-                            <div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div>
-                        </button>
-                        <button onclick="setBubbleTheme('green')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition">
-                            <div class="w-1/2 h-4 rounded-full bg-emerald-500/20 self-end border border-emerald-500/30"></div>
-                            <div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div>
-                        </button>
-                        <button onclick="setBubbleTheme('purple')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition">
-                            <div class="w-1/2 h-4 rounded-full bg-purple-500/20 self-end border border-purple-500/30"></div>
-                            <div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div>
-                        </button>
-                        <button onclick="setBubbleTheme('orange')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition">
-                            <div class="w-1/2 h-4 rounded-full bg-orange-500/20 self-end border border-orange-500/30"></div>
-                            <div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div>
-                        </button>
+                        <button onclick="setBubbleTheme('blue')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition"><div class="w-1/2 h-4 rounded-full bg-blue-500/20 self-end border border-blue-500/30"></div><div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div></button>
+                        <button onclick="setBubbleTheme('green')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition"><div class="w-1/2 h-4 rounded-full bg-emerald-500/20 self-end border border-emerald-500/30"></div><div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div></button>
+                        <button onclick="setBubbleTheme('purple')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition"><div class="w-1/2 h-4 rounded-full bg-purple-500/20 self-end border border-purple-500/30"></div><div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div></button>
+                        <button onclick="setBubbleTheme('orange')" class="p-3 rounded-xl border border-white/10 bg-white/5 flex flex-col gap-2 hover:bg-white/10 transition"><div class="w-1/2 h-4 rounded-full bg-orange-500/20 self-end border border-orange-500/30"></div><div class="w-1/2 h-4 rounded-full bg-white/10 self-start border border-white/5"></div></button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Install PWA Prompt -->
+    <!-- PWA Prompt -->
     <div id="pwaInstallBanner" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full shadow-2xl z-[3000] flex items-center gap-4 transition-transform translate-y-[-150%]">
         <i class="fas fa-download"></i>
         <span class="text-sm font-semibold whitespace-nowrap">Install IEDC Connect</span>
@@ -378,81 +336,46 @@
     <!-- Main Application UI -->
     <div class="w-full max-w-[1500px] h-full flex items-center relative z-10">
         
-        <!-- Floating Action Bar (Far Left) -->
+        <!-- Desktop Floating Action Bar -->
         <div class="floating-nav hidden xl:flex flex-col items-center gap-6 py-6 px-3 rounded-[30px] mr-6 z-20 h-[90%]">
-            <button onclick="switchSection('chats')" class="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-lg transition hover:bg-white/20">
-                <i class="fas fa-comment text-lg"></i>
-            </button>
-            <button onclick="openModal('themeModal')" title="Theme & Wallpaper" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
-                <i class="fas fa-paint-brush text-lg"></i>
-            </button>
-            <button onclick="switchSection('requests')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
-                <i class="fas fa-user-friends text-lg"></i>
-            </button>
-            <button onclick="switchSection('archive')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
-                <i class="fas fa-archive text-lg"></i>
-            </button>
+            <button onclick="switchSection('chats')" class="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-lg transition hover:bg-white/20"><i class="fas fa-comment text-lg"></i></button>
+            <button onclick="openModal('themeModal')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5"><i class="fas fa-paint-brush text-lg"></i></button>
+            <button onclick="switchSection('requests')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5"><i class="fas fa-user-friends text-lg"></i></button>
+            <button onclick="switchSection('archive')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5"><i class="fas fa-archive text-lg"></i></button>
             <div class="mt-auto pt-6 border-t border-white/10">
-                <button id="logoutBtn" class="w-12 h-12 rounded-full text-white/40 hover:text-red-400 flex items-center justify-center transition hover:bg-red-400/10">
-                    <i class="fas fa-sign-out-alt text-lg"></i>
-                </button>
+                <button id="logoutBtn" class="w-12 h-12 rounded-full text-white/40 hover:text-red-400 flex items-center justify-center transition hover:bg-red-400/10"><i class="fas fa-sign-out-alt text-lg"></i></button>
             </div>
         </div>
 
         <!-- Main 3-Pane Application Window -->
         <div id="main-app" class="app-container w-full h-full lg:h-[95%] lg:rounded-[40px] flex overflow-hidden relative">
             
-            <!-- Column 1: Navigation & Communities (Hidden on small screens) -->
+            <!-- Column 1: Navigation & Communities -->
             <div class="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-glass-border p-6 h-full relative z-10">
-                <!-- Profile Header -->
                 <div class="flex items-center justify-between mb-8">
                     <div class="flex items-center gap-3 cursor-pointer">
                         <img id="myAvatar" src="https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff" class="w-10 h-10 rounded-full object-cover shadow-md">
                         <span id="myName" class="font-medium text-white/90 text-sm">Loading...</span>
                     </div>
-                    <a href="dashboard.html" class="text-white/40 hover:text-white transition p-2">
-                        <i class="fas fa-cog"></i>
-                    </a>
                 </div>
 
                 <div class="space-y-1 mb-8">
                     <button id="nav-chats" onclick="switchSection('chats')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 bg-glass-active text-white rounded-2xl transition">
-                        <div class="flex items-center gap-3 text-sm font-medium">
-                            <i class="fas fa-comment bg-transparent w-5 text-center"></i> Chats
-                        </div>
+                        <div class="flex items-center gap-3 text-sm font-medium"><i class="fas fa-comment bg-transparent w-5 text-center"></i> Chats</div>
                     </button>
                     <button onclick="openModal('createGroupModal')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover text-blue-400 hover:text-blue-300 rounded-2xl transition">
-                        <div class="flex items-center gap-3 text-sm font-bold">
-                            <i class="fas fa-plus-circle bg-transparent w-5 text-center"></i> New Group
-                        </div>
-                    </button>
-                    <button id="nav-marketplace" onclick="switchSection('marketplace')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
-                        <div class="flex items-center gap-3 text-sm font-medium">
-                            <i class="fas fa-store bg-transparent w-5 text-center"></i> Marketplace
-                        </div>
+                        <div class="flex items-center gap-3 text-sm font-bold"><i class="fas fa-plus-circle bg-transparent w-5 text-center"></i> New Group</div>
                     </button>
                     <button id="nav-requests" onclick="switchSection('requests')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
-                        <div class="flex items-center gap-3 text-sm font-medium">
-                            <i class="fas fa-comment-dots bg-transparent w-5 text-center"></i> Message requests
-                        </div>
+                        <div class="flex items-center gap-3 text-sm font-medium"><i class="fas fa-user-friends bg-transparent w-5 text-center"></i> Requests</div>
                     </button>
-                    <button id="nav-archive" onclick="switchSection('archive')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
-                        <div class="flex items-center gap-3 text-sm font-medium">
-                            <i class="fas fa-archive bg-transparent w-5 text-center"></i> Archive
-                        </div>
-                    </button>
-                </div>
-
-                <div class="flex-grow overflow-y-auto pr-2" id="sidebarGroupsList">
-                    <h3 class="text-white/40 text-xs font-semibold mb-4 px-2 tracking-wide">My Groups</h3>
-                    <div class="text-center mt-10"><div class="spinner"></div></div>
                 </div>
             </div>
 
             <!-- Column 2: Chat List -->
             <div id="col-list" class="w-full lg:w-[340px] flex flex-col border-r border-glass-border shrink-0 h-full bg-glass-panel lg:bg-transparent relative z-10 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                 
-                <div class="lg:hidden flex items-center justify-between p-6 pb-2 border-b border-white/5">
+                <div class="lg:hidden flex items-center justify-between p-6 pb-2 border-b border-white/5 shrink-0">
                     <div class="flex items-center gap-3">
                         <img id="myAvatarMobile" src="https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff" class="w-8 h-8 rounded-full">
                         <h2 id="mobile-col-list-title" class="text-white font-semibold">Chats</h2>
@@ -474,30 +397,30 @@
                     </div>
                 </div>
 
-                <!-- SECTION: CHATS (Default) -->
-                <div id="chats-view" class="flex flex-col h-full overflow-hidden">
+                <!-- SECTION: CHATS (FIXED FLEX-GROW BUG FOR IOS) -->
+                <div id="chats-view" class="flex-grow flex flex-col overflow-hidden h-0 relative">
                     <div class="flex-grow overflow-y-auto px-4 py-2 space-y-1" id="chatListContainer">
+                        <!-- Loading State -->
+                        <div class="flex justify-center py-10"><div class="spinner"></div></div>
                         <!-- Dynamic Groups rendered here -->
                     </div>
                 </div>
 
-                <!-- SECTION: MARKETPLACE, REQUESTS, ARCHIVE (Mocks) -->
-                <div id="marketplace-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-3 hidden">
-                    <div class="p-3 rounded-2xl border border-white/5 bg-white/5 flex gap-4 items-center">
-                        <div class="w-16 h-16 rounded-xl bg-[#0a0c0f] flex items-center justify-center shrink-0"><i class="fas fa-microchip text-2xl text-blue-400"></i></div>
-                        <div class="flex-grow"><h4 class="text-white text-sm">Arduino Uno</h4><p class="text-green-400 text-[11px] mt-1">Available</p></div>
-                    </div>
+                <!-- SECTION: REQUESTS, ARCHIVE -->
+                <div id="requests-view" class="flex-grow flex flex-col overflow-hidden h-0 relative hidden">
+                     <div class="flex-grow overflow-y-auto px-4 py-2 space-y-3">
+                        <div class="p-4 rounded-2xl border border-white/5 bg-white/5 flex flex-col gap-3">
+                            <div class="flex items-center gap-3"><img src="https://ui-avatars.com/api/?name=J&background=random" class="w-10 h-10 rounded-full"><div><h4 class="text-white text-sm">John Doe</h4><p class="text-white/50 text-[11px]">Wants to connect</p></div></div>
+                        </div>
+                     </div>
                 </div>
-                <div id="requests-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-3 hidden">
-                    <div class="p-4 rounded-2xl border border-white/5 bg-white/5 flex flex-col gap-3">
-                        <div class="flex items-center gap-3"><img src="https://ui-avatars.com/api/?name=J&background=random" class="w-10 h-10 rounded-full"><div><h4 class="text-white text-sm">John Doe</h4><p class="text-white/50 text-[11px]">Wants to connect</p></div></div>
-                    </div>
-                </div>
-                <div id="archive-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-2 hidden opacity-60">
-                    <div class="flex items-center gap-4 p-3 rounded-2xl bg-white/5 cursor-pointer">
-                        <div class="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center text-white/50 shrink-0"><i class="fas fa-flag-checkered text-xl"></i></div>
-                        <div class="flex-grow overflow-hidden"><h4 class="text-white/70 text-sm">Hackathon 2024</h4><p class="text-[11px] text-white/40">Archived</p></div>
-                    </div>
+                <div id="archive-view" class="flex-grow flex flex-col overflow-hidden h-0 relative hidden opacity-60">
+                     <div class="flex-grow overflow-y-auto px-4 py-2 space-y-2">
+                        <div class="flex items-center gap-4 p-3 rounded-2xl bg-white/5 cursor-pointer">
+                            <div class="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center text-white/50 shrink-0"><i class="fas fa-flag-checkered text-xl"></i></div>
+                            <div class="flex-grow overflow-hidden"><h4 class="text-white/70 text-sm">Hackathon 2024</h4><p class="text-[11px] text-white/40">Archived</p></div>
+                        </div>
+                     </div>
                 </div>
 
                 <!-- Mobile bottom nav -->
@@ -511,26 +434,20 @@
             <!-- Column 3: Active Chat Area -->
             <div id="col-chat" class="w-full flex-grow flex-col h-full bg-glass-panel lg:bg-transparent relative overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                 
-                <!-- Initial State -->
                 <div id="emptyChatState" class="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/20 backdrop-blur-sm">
-                    <div class="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/30 text-4xl mb-6">
-                        <i class="fas fa-comments"></i>
-                    </div>
+                    <div class="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/30 text-4xl mb-6"><i class="fas fa-comments"></i></div>
                     <h2 class="text-xl font-bold text-white mb-2 tracking-wide">IEDC Connect</h2>
                     <p class="text-white/50 text-sm max-w-xs text-center">Select a group from the list or create a new one to start messaging.</p>
                 </div>
 
-                <!-- Active Chat -->
+                <!-- Active Chat Elements -->
                 <div id="activeChatContainer" class="flex flex-col h-full hidden relative z-10">
-                    
                     <!-- Chat Header -->
                     <header class="h-[72px] md:h-[88px] border-b border-glass-border flex items-center justify-between px-4 md:px-6 shrink-0 bg-white/5 backdrop-blur-md z-30 cursor-pointer hover:bg-white/10 transition-colors" onclick="toggleGroupInfo()">
                         <div class="flex items-center gap-3 md:gap-4 overflow-hidden">
-                            <button id="backToChatsBtn" class="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white mr-1 hover:bg-white/20 transition shrink-0" onclick="event.stopPropagation(); closeMobileChat()">
-                                <i class="fas fa-arrow-left text-sm"></i>
-                            </button>
+                            <button id="backToChatsBtn" class="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white mr-1 hover:bg-white/20 transition shrink-0" onclick="event.stopPropagation(); closeMobileChat()"><i class="fas fa-arrow-left text-sm"></i></button>
                             <div class="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 bg-[#0f1115] flex items-center justify-center text-white shadow-lg overflow-hidden shrink-0">
-                                <img id="activeChatIcon" src="" class="w-full h-full object-cover opacity-90" onerror="this.src='https://ui-avatars.com/api/?name=Group&background=3b82f6&color=fff'">
+                                <img id="activeChatIcon" src="" class="w-full h-full object-cover opacity-90">
                             </div>
                             <div class="overflow-hidden">
                                 <h2 id="activeChatTitle" class="text-base md:text-lg font-semibold text-white leading-tight truncate">Select a Chat</h2>
@@ -538,7 +455,6 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-1 md:gap-3 text-white/60 shrink-0">
-                            <!-- Ringing / Call UI Triggers -->
                             <button onclick="event.stopPropagation(); initiateCall('video')" title="Video Call" class="w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5"><i class="fas fa-video text-sm text-blue-400"></i></button>
                             <button onclick="event.stopPropagation(); initiateCall('audio')" title="Voice Call" class="w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5 hidden sm:flex"><i class="fas fa-phone text-sm text-blue-400"></i></button>
                         </div>
@@ -561,22 +477,46 @@
                     </footer>
                 </div>
 
-                <!-- Group Info Sliding Right Panel (Abbreviated for space) -->
+                <!-- Group Info Panel -->
                 <div id="groupInfoPanel" class="slide-panel absolute top-0 right-0 w-full md:w-[380px] h-full bg-black/80 backdrop-blur-3xl border-l border-white/10 z-[50] flex flex-col overflow-y-auto">
                     <div class="p-6 border-b border-white/5 flex items-center gap-4 shrink-0 sticky top-0 bg-black/50 backdrop-blur-xl z-10">
-                        <button onclick="toggleGroupInfo()" class="text-white/70 hover:text-white transition"><i class="fas fa-times"></i></button>
+                        <button onclick="toggleGroupInfo()" class="w-8 h-8 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition flex items-center justify-center"><i class="fas fa-times"></i></button>
                         <h3 class="text-white font-bold text-lg">Group Info</h3>
                     </div>
-                    <!-- (Inner Info content removed for brevity, matches original) -->
+                    <div class="p-6 flex flex-col items-center text-center border-b border-white/5">
+                        <div class="w-32 h-32 rounded-full bg-white/5 border-2 border-white/10 overflow-hidden mb-4 relative group">
+                            <img id="infoGroupIcon" src="" class="w-full h-full object-cover opacity-90">
+                            <div id="editIconOverlay" class="hidden absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xl cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" onclick="promptEditIcon()"><i class="fas fa-camera"></i></div>
+                        </div>
+                        <h2 id="infoGroupName" class="text-2xl font-bold text-white mb-1 px-4">Name</h2>
+                        <p id="infoGroupMembersCount" class="text-white/50 text-xs uppercase tracking-widest font-semibold">1 Member</p>
+                    </div>
+                    <div class="p-6 border-b border-white/5">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="text-[10px] text-blue-400 uppercase tracking-widest font-bold">Description</h4>
+                            <button id="editDescBtn" class="hidden text-white/40 hover:text-white p-2" onclick="promptEditDesc()"><i class="fas fa-pen text-xs"></i></button>
+                        </div>
+                        <p id="infoGroupDesc" class="text-white/70 text-sm font-light leading-relaxed break-words">No description</p>
+                    </div>
+                    <div id="adminSettingsSection" class="hidden p-6 border-b border-white/5 bg-blue-500/5">
+                        <h4 class="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-5 flex items-center gap-2"><i class="fas fa-shield-alt"></i> Settings</h4>
+                        <div class="flex items-center justify-between mb-6">
+                            <div><p class="text-white text-sm font-medium">Edit Info</p></div>
+                            <select id="settingEditInfo" onchange="updateGroupSetting('editInfo', this.value)" class="bg-black/50 border border-white/10 text-white text-xs rounded-lg py-1 px-2 outline-none"><option value="all">All</option><option value="admins">Admins Only</option></select>
+                        </div>
+                        <button onclick="generateInviteLink()" class="w-full mt-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold py-3 rounded-xl transition"><i class="fas fa-link"></i> Copy Invite Link</button>
+                    </div>
+                    <div class="p-6 flex-grow pb-24">
+                        <h4 class="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-4">Members</h4>
+                        <div id="infoMembersList" class="space-y-4"></div>
+                    </div>
                 </div>
-
             </div>
         </div>
     </div>
 
     <!-- Global Scripts -->
     <script>
-        // UI Navigation Logic
         window.switchSection = function(section) {
             document.querySelectorAll('.menu-nav-btn').forEach(btn => {
                 btn.classList.remove('bg-glass-active', 'text-white');
@@ -602,8 +542,7 @@
         window.closeMobileChat = function() {
             document.getElementById('main-app').classList.remove('mobile-view-chat');
         }
-
-        // PWA
+        
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault(); deferredPrompt = e;
@@ -619,13 +558,12 @@
         }
     </script>
 
-    <!-- Firebase Application Logic -->
+    <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, arrayUnion, deleteDoc, setDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, arrayUnion, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAIn9hB7Hx4Nwwk5Ar9bE3tFuo40VkBcc8",
             authDomain: "metsiedc-3010e.firebaseapp.com",
@@ -641,21 +579,61 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Globals
         let currentUser = null;
         let currentUserName = "User";
         let currentUserAvatar = "https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff";
         let activeGroupId = null;
         let activeGroupData = null;
         let activeMessagesUnsubscribe = null;
+        let activeGroupUnsubscribe = null;
         
+        let allGroups = [];
         let jitsiApi = null;
         let ringtone = document.getElementById('ringtoneAudio');
         let callListenerUnsubscribe = null;
 
         lucide.createIcons();
+        initThemes();
 
-        // 1. Auth Flow
+        function initThemes() {
+            const savedWP = localStorage.getItem('iedc_chat_wp');
+            const savedTheme = localStorage.getItem('iedc_chat_theme');
+            if(savedWP) window.setWallpaper(savedWP, false);
+            if(savedTheme) window.setBubbleTheme(savedTheme, false);
+        }
+
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if(modal) { modal.classList.remove('hidden'); setTimeout(() => { modal.classList.remove('opacity-0'); modal.querySelector('div').classList.remove('scale-95'); }, 10); }
+        };
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if(modal) { modal.classList.add('opacity-0'); modal.querySelector('div').classList.add('scale-95'); setTimeout(() => modal.classList.add('hidden'), 300); }
+        };
+
+        window.setWallpaper = function(url, showMsg = true) {
+            const root = document.documentElement;
+            if(url === 'none') { root.style.setProperty('--chat-bg-image', 'none'); localStorage.removeItem('iedc_chat_wp'); } 
+            else { root.style.setProperty('--chat-bg-image', `url('${url}')`); localStorage.setItem('iedc_chat_wp', url); }
+            if(showMsg) window.closeModal('themeModal');
+        };
+
+        window.setBubbleTheme = function(color, showMsg = true) {
+            const themes = {
+                blue:   { out: 'rgba(59, 130, 246, 0.2)', border: 'rgba(59, 130, 246, 0.3)' },
+                green:  { out: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 0.3)' },
+                purple: { out: 'rgba(168, 85, 247, 0.2)', border: 'rgba(168, 85, 247, 0.3)' },
+                orange: { out: 'rgba(249, 115, 22, 0.2)', border: 'rgba(249, 115, 22, 0.3)' }
+            };
+            if(themes[color]) {
+                document.documentElement.style.setProperty('--bubble-out-color', themes[color].out);
+                document.documentElement.style.setProperty('--bubble-out-border', themes[color].border);
+                localStorage.setItem('iedc_chat_theme', color);
+            }
+            if(showMsg) window.closeModal('themeModal');
+        };
+
+        // Auth
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -672,185 +650,321 @@
                 window.currentUserName = currentUserName;
                 document.getElementById('myName').textContent = currentUserName.split(' ')[0];
                 document.getElementById('myAvatar').src = currentUserAvatar;
-                
+                if(document.getElementById('myAvatarMobile')) document.getElementById('myAvatarMobile').src = currentUserAvatar;
+
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('join')) await handleJoinLink(urlParams.get('join'));
+
                 loadGroups();
-                listenForGlobalIncomingCalls(); // NEW: Listen for ringing calls
+                listenForGlobalIncomingCalls();
             } else {
-                window.location.href = 'login.html';
+                window.location.href = 'connect-login.html';
             }
         });
 
-        // 2. Fetch Groups
+        // Group Creation
+        document.getElementById('createGroupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('createGroupBtn');
+            const name = document.getElementById('newGroupName').value.trim();
+            const desc = document.getElementById('newGroupDesc').value.trim();
+            const icon = document.getElementById('newGroupIcon').value.trim() || 'https://ui-avatars.com/api/?name='+name+'&background=3b82f6&color=fff';
+            
+            if(!name || !currentUser) return;
+            btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+            try {
+                const groupRef = await addDoc(collection(db, "group_chats"), {
+                    name: name, description: desc, iconUrl: icon, admins: [currentUser.uid], members: [currentUser.uid],
+                    settings: { sendMessages: 'all', editInfo: 'all' }, createdAt: serverTimestamp(), createdBy: currentUser.uid
+                });
+                await addDoc(collection(db, "group_chats", groupRef.id, "messages"), {
+                    text: `${currentUserName} created group "${name}"`, type: "system", timestamp: serverTimestamp()
+                });
+                window.closeModal('createGroupModal');
+                document.getElementById('createGroupForm').reset();
+                setTimeout(() => window.openGroup(groupRef.id), 500);
+            } catch(e) { alert("Failed to create group."); } finally { btn.disabled = false; btn.textContent = 'Create Group'; }
+        });
+
         function loadGroups() {
             const q = query(collection(db, "group_chats"), orderBy("createdAt", "desc"));
             onSnapshot(q, (snapshot) => {
                 const container = document.getElementById('chatListContainer');
+                allGroups = [];
                 let html = '';
                 snapshot.forEach(doc => {
                     const data = { id: doc.id, ...doc.data() };
+                    allGroups.push(data);
                     const isMember = data.members && data.members.includes(currentUser.uid);
                     html += `
-                        <div onclick="openGroup('${data.id}')" class="flex items-center gap-3 p-3 rounded-2xl cursor-pointer group transition-all ${isMember ? 'bg-glass-active' : 'hover:bg-glass-hover opacity-60'}">
-                            <div class="w-10 h-10 rounded-full border border-white/10 bg-[#0f1115] flex items-center justify-center text-white shrink-0 overflow-hidden group-hover:scale-105">
-                                <img src="${data.iconUrl}" class="w-full h-full object-cover opacity-90">
+                        <div onclick="openGroup('${data.id}')" class="flex items-center gap-3 p-3 rounded-2xl cursor-pointer group transition-all ${isMember ? 'bg-glass-active opacity-100' : 'hover:bg-glass-hover opacity-60'}">
+                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/10 bg-[#0f1115] flex items-center justify-center text-white shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
+                                <img src="${data.iconUrl || 'https://ui-avatars.com/api/?name='+data.name}" class="w-full h-full object-cover opacity-90">
                             </div>
                             <div class="flex-grow overflow-hidden">
-                                <h4 class="text-white font-semibold text-sm truncate">${data.name}</h4>
+                                <h4 class="text-white font-semibold text-sm truncate tracking-wide">${data.name}</h4>
+                                <p class="text-xs text-white/50 truncate font-light">${isMember ? 'Tap to chat' : 'Tap to join'}</p>
                             </div>
                         </div>`;
                 });
-                container.innerHTML = html;
+                container.innerHTML = html || `<p class="text-white/40 text-xs text-center pt-8">No groups found.</p>`;
             });
         }
 
-        // 3. Open Chat
         window.openGroup = async function(groupId) {
             activeGroupId = groupId;
             window.activeGroupId = groupId; 
             document.getElementById('emptyChatState').classList.add('hidden');
             document.getElementById('activeChatContainer').classList.remove('hidden');
+            document.getElementById('groupInfoPanel').classList.remove('open');
+            
             if(window.innerWidth <= 1024) window.openMobileChat();
-
             if(activeMessagesUnsubscribe) activeMessagesUnsubscribe();
+            if(activeGroupUnsubscribe) activeGroupUnsubscribe();
 
-            onSnapshot(doc(db, "group_chats", groupId), (docSnap) => {
-                if(docSnap.exists()) {
-                    activeGroupData = { id: docSnap.id, ...docSnap.data() };
-                    document.getElementById('activeChatTitle').textContent = activeGroupData.name;
-                    document.getElementById('activeChatIcon').src = activeGroupData.iconUrl;
-                }
+            document.getElementById('messages-container').innerHTML = `<div id="loadingMessages" class="flex justify-center py-10"><div class="spinner"></div></div>`;
+
+            activeGroupUnsubscribe = onSnapshot(doc(db, "group_chats", groupId), (docSnap) => {
+                if(docSnap.exists()) { activeGroupData = { id: docSnap.id, ...docSnap.data() }; updateGroupUI(); }
             });
 
             const q = query(collection(db, "group_chats", groupId, "messages"), orderBy("timestamp", "asc"));
             activeMessagesUnsubscribe = onSnapshot(q, (snapshot) => {
-                const container = document.getElementById('messages-container');
-                Array.from(container.children).forEach(c => { if(c.id !== 'loadingMessages') c.remove(); });
-                let lastSenderId = null;
-
+                const msgs = [];
                 snapshot.forEach(d => {
-                    const msg = { id: d.id, ...d.data() };
-                    if(msg.type === 'system') {
-                        container.innerHTML += `<div class="text-center my-4 w-full"><span class="bg-black/30 text-white/50 text-[10px] uppercase font-bold px-4 py-1.5 rounded-full border border-white/5">${msg.text}</span></div>`;
-                        return;
+                    const data = d.data();
+                    msgs.push({ id: d.id, ...data });
+                    if (data.type !== 'system' && data.senderId !== currentUser.uid && (!data.seenBy || !data.seenBy.includes(currentUser.uid))) {
+                        updateDoc(doc(db, "group_chats", groupId, "messages", d.id), { seenBy: arrayUnion(currentUser.uid) }).catch(()=>{});
                     }
-                    const isMe = msg.senderId === currentUser.uid;
-                    const isSameAsLast = lastSenderId === msg.senderId;
-                    lastSenderId = msg.senderId;
-                    
-                    const alignClass = isMe ? "justify-end" : "justify-start";
-                    const bubbleColor = isMe ? "bubble-out" : "bubble-in";
-                    const textColor = isMe ? "text-blue-50" : "text-white/90";
-                    const avatarHtml = (!isMe && !isSameAsLast) ? `<img src="${msg.senderAvatar}" class="w-8 h-8 rounded-full border border-white/10 shrink-0 mt-auto">` : (!isMe ? `<div class="w-8 shrink-0"></div>` : '');
-                    const nameHtml = (!isMe && !isSameAsLast) ? `<div class="text-[11px] font-bold text-white/60 mb-1 ml-1">${msg.senderName}</div>` : '';
-                    
-                    container.innerHTML += `
-                        <div class="flex w-full ${alignClass} gap-2 ${isSameAsLast ? "mt-1" : "mt-4"} px-2 md:px-6">
-                            ${avatarHtml}
-                            <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]">
-                                ${nameHtml}
-                                <div class="${bubbleColor} px-4 py-2.5 shadow-lg flex flex-col"><span class="text-[14px] leading-relaxed ${textColor}">${msg.text}</span></div>
-                            </div>
-                        </div>`;
                 });
-                container.scrollTop = container.scrollHeight;
-                document.getElementById('loadingMessages').style.display = 'none';
+                renderMessages(msgs);
             });
         };
 
-        // 4. Send Chat
+        function updateGroupUI() {
+            if(!activeGroupData) return;
+            document.getElementById('activeChatTitle').textContent = activeGroupData.name;
+            document.getElementById('activeChatIcon').src = activeGroupData.iconUrl;
+            document.getElementById('activeChatMembersText').textContent = `${(activeGroupData.members || []).length} members`;
+
+            const isAdmin = (activeGroupData.admins || []).includes(currentUser.uid);
+            const isMember = (activeGroupData.members || []).includes(currentUser.uid);
+            const sendRule = (activeGroupData.settings || {}).sendMessages || 'all';
+
+            const footer = document.getElementById('chatFooter');
+            const notice = document.getElementById('adminOnlyNotice');
+
+            if (!isMember) {
+                footer.classList.add('hidden');
+                notice.innerHTML = `<button onclick="joinCurrentGroup()" class="bg-blue-500 text-white px-6 py-2 rounded-full text-xs font-bold shadow-lg">Join Group to Chat</button>`;
+                notice.classList.remove('hidden');
+            } else if (sendRule === 'admins' && !isAdmin) {
+                footer.classList.add('hidden');
+                notice.innerHTML = `<span class="text-white/50 text-xs"><i class="fas fa-lock mr-2"></i> Only admins can send messages.</span>`;
+                notice.classList.remove('hidden');
+            } else {
+                footer.classList.remove('hidden');
+                notice.classList.add('hidden');
+            }
+            if(document.getElementById('groupInfoPanel').classList.contains('open')) renderGroupInfoPanel();
+        }
+
+        window.joinCurrentGroup = async function() {
+            if(!activeGroupId || !currentUser) return;
+            await updateDoc(doc(db, "group_chats", activeGroupId), { members: arrayUnion(currentUser.uid) });
+            await addDoc(collection(db, "group_chats", activeGroupId, "messages"), { text: `${currentUserName} joined the group.`, type: "system", timestamp: serverTimestamp() });
+        };
+
+        window.toggleGroupInfo = function() {
+            const panel = document.getElementById('groupInfoPanel');
+            panel.classList.toggle('open');
+            if(panel.classList.contains('open')) renderGroupInfoPanel();
+        };
+
+        function renderGroupInfoPanel() {
+            if(!activeGroupData) return;
+            const isAdmin = (activeGroupData.admins || []).includes(currentUser.uid);
+            const canEdit = isAdmin || ((activeGroupData.settings || {}).editInfo || 'all') === 'all';
+
+            document.getElementById('infoGroupIcon').src = activeGroupData.iconUrl;
+            document.getElementById('infoGroupName').textContent = activeGroupData.name;
+            document.getElementById('infoGroupMembersCount').textContent = `${(activeGroupData.members || []).length} members`;
+            document.getElementById('infoGroupDesc').textContent = activeGroupData.description || "No description provided.";
+            document.getElementById('editIconOverlay').style.display = canEdit ? 'flex' : 'none';
+            document.getElementById('editDescBtn').style.display = canEdit ? 'block' : 'none';
+
+            const adminSec = document.getElementById('adminSettingsSection');
+            if(isAdmin) {
+                adminSec.classList.remove('hidden');
+                document.getElementById('settingEditInfo').value = activeGroupData.settings.editInfo || 'all';
+                document.getElementById('settingSendMsg').value = activeGroupData.settings.sendMessages || 'all';
+            } else adminSec.classList.add('hidden');
+
+            const memList = document.getElementById('infoMembersList');
+            memList.innerHTML = '';
+            (activeGroupData.members || []).forEach(uid => {
+                const isMe = uid === currentUser.uid;
+                const isMemAdmin = (activeGroupData.admins || []).includes(uid);
+                const mName = isMe ? "You" : `User (${uid.substring(0,4)})`;
+                const mAvatar = isMe ? currentUserAvatar : `https://ui-avatars.com/api/?name=${mName}&background=3b82f6&color=fff`;
+                memList.innerHTML += `
+                    <div class="flex items-center justify-between group">
+                        <div class="flex items-center gap-3">
+                            <img src="${mAvatar}" class="w-10 h-10 rounded-full border border-white/10">
+                            <p class="text-white text-sm font-medium">${mName}</p>
+                        </div>
+                        ${isMemAdmin ? `<span class="bg-blue-500/20 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded">Admin</span>` : ''}
+                    </div>`;
+            });
+        }
+
+        window.updateGroupSetting = async function(key, val) {
+            if(!activeGroupId || !(activeGroupData.admins || []).includes(currentUser.uid)) return;
+            try {
+                await updateDoc(doc(db, "group_chats", activeGroupId), { [`settings.${key}`]: val });
+                const msg = val === 'admins' ? `changed settings to allow only admins to edit/send.` : `changed settings back to all members.`;
+                await addDoc(collection(db, "group_chats", activeGroupId, "messages"), { text: `${currentUserName} ${msg}`, type: "system", timestamp: serverTimestamp() });
+            } catch(e) { console.error(e); }
+        };
+
+        window.promptEditDesc = async function() {
+            const newDesc = prompt("Enter new group description:", activeGroupData.description);
+            if(newDesc !== null && newDesc !== activeGroupData.description) await updateDoc(doc(db, "group_chats", activeGroupId), { description: newDesc });
+        };
+        window.promptEditIcon = async function() {
+            const newIcon = prompt("Enter new image URL:", activeGroupData.iconUrl);
+            if(newIcon && newIcon !== activeGroupData.iconUrl) await updateDoc(doc(db, "group_chats", activeGroupId), { iconUrl: newIcon });
+        };
+        window.generateInviteLink = function() {
+            if(!activeGroupId) return;
+            const link = `${window.location.origin}${window.location.pathname}?join=${activeGroupId}`;
+            navigator.clipboard.writeText(link).then(() => alert("Invite link copied to clipboard:\n" + link));
+        };
+        async function handleJoinLink(groupId) {
+            try {
+                const gDoc = await getDoc(doc(db, "group_chats", groupId));
+                if(gDoc.exists() && !(gDoc.data().members || []).includes(currentUser.uid)) {
+                    await updateDoc(doc(db, "group_chats", groupId), { members: arrayUnion(currentUser.uid) });
+                    await addDoc(collection(db, "group_chats", groupId, "messages"), { text: `${currentUserName} joined via invite link.`, type: "system", timestamp: serverTimestamp() });
+                }
+                setTimeout(() => window.openGroup(groupId), 1000);
+            } catch(e) {}
+        }
+        
+        window.deleteMessage = async function(messageId) {
+            if(!activeGroupId || !currentUser) return;
+            if(confirm("Delete this message for everyone?")) {
+                try { await deleteDoc(doc(db, "group_chats", activeGroupId, "messages", messageId)); } 
+                catch(e) { alert("Failed to delete message."); }
+            }
+        };
+
+        function renderMessages(messages) {
+            const container = document.getElementById('messages-container');
+            Array.from(container.children).forEach(c => { if(c.id !== 'loadingMessages') c.remove(); });
+            let lastSenderId = null;
+
+            messages.forEach(msg => {
+                if(msg.type === 'system') {
+                    container.innerHTML += `<div class="text-center my-4 w-full"><span class="bg-black/30 backdrop-blur-md text-white/50 text-[10px] uppercase font-semibold px-4 py-1.5 rounded-full border border-white/5">${msg.text}</span></div>`;
+                    lastSenderId = null; return;
+                }
+
+                const isMe = currentUser && msg.senderId === currentUser.uid;
+                const isSameAsLast = lastSenderId === msg.senderId;
+                lastSenderId = msg.senderId;
+                
+                let timeString = '';
+                if (msg.timestamp) timeString = (msg.timestamp.toDate ? msg.timestamp.toDate() : new Date(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                const alignClass = isMe ? "justify-end" : "justify-start";
+                const bubbleColor = isMe ? "bubble-out" : "bubble-in";
+                const textColor = isMe ? "text-blue-50" : "text-white/90";
+                const avatarHtml = (!isMe && !isSameAsLast) ? `<img src="${msg.senderAvatar}" class="w-8 h-8 rounded-full border border-white/10 shrink-0 mt-auto">` : (!isMe ? `<div class="w-8 shrink-0"></div>` : '');
+                const nameHtml = (!isMe && !isSameAsLast) ? `<div class="text-[11px] font-bold text-white/60 mb-1 ml-1">${msg.senderName}</div>` : '';
+                
+                let readReceiptHtml = '';
+                if (isMe) {
+                    const totalMembers = activeGroupData ? (activeGroupData.members || []).length : 1;
+                    const seenCount = (msg.seenBy || []).length;
+                    if (seenCount > 0) {
+                        if (seenCount >= (totalMembers - 1) && totalMembers > 1) readReceiptHtml = `<i class="fas fa-check-double text-blue-400 text-[10px] ml-1"></i>`;
+                        else readReceiptHtml = `<i class="fas fa-check-double text-white/40 text-[10px] ml-1"></i>`;
+                    } else readReceiptHtml = `<i class="fas fa-check text-white/40 text-[10px] ml-1"></i>`;
+                }
+                
+                let deleteHtml = '';
+                const isAdmin = activeGroupData && (activeGroupData.admins || []).includes(currentUser.uid);
+                if (isMe || isAdmin) deleteHtml = `<button onclick="deleteMessage('${msg.id}')" class="hidden group-hover:flex items-center justify-center w-6 h-6 rounded-full bg-black/40 hover:bg-red-500/80 text-white/60 hover:text-white absolute ${isMe ? '-left-8' : '-right-8'} top-1/2 -translate-y-1/2"><i class="fas fa-trash text-[10px]"></i></button>`;
+
+                container.innerHTML += `
+                    <div class="flex w-full ${alignClass} gap-2 ${isSameAsLast ? "mt-1" : "mt-4"} px-2 md:px-6 group relative">
+                        ${avatarHtml}
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%] relative">
+                            ${nameHtml}
+                            <div class="${bubbleColor} px-4 py-2.5 shadow-lg flex flex-col min-w-[80px] relative">
+                                <span class="text-[14px] leading-relaxed ${textColor} break-words pr-2">${msg.text}</span>
+                                <div class="flex items-center justify-end mt-1 gap-1"><span class="text-[9px] text-white/40">${timeString}</span>${readReceiptHtml}</div>
+                            </div>
+                            ${deleteHtml}
+                        </div>
+                    </div>`;
+            });
+            container.scrollTop = container.scrollHeight;
+            document.getElementById('loadingMessages').style.display = 'none';
+        }
+
         document.getElementById('chatForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             if (!text || !currentUser || !activeGroupId) return;
-            input.value = '';
-            await addDoc(collection(db, "group_chats", activeGroupId, "messages"), {
-                text: text, type: "text", senderId: currentUser.uid, senderName: currentUserName, senderAvatar: currentUserAvatar, timestamp: serverTimestamp()
-            });
+            input.value = ''; document.getElementById('sendBtn').disabled = true;
+            try {
+                await addDoc(collection(db, "group_chats", activeGroupId, "messages"), {
+                    text: text, type: "text", senderId: currentUser.uid, senderName: currentUserName, senderAvatar: currentUserAvatar, timestamp: serverTimestamp(), seenBy: []
+                });
+            } catch(error) { alert("Failed to send."); } finally { document.getElementById('sendBtn').disabled = false; input.focus(); }
         });
 
-        // -------------------------------------------------------------------------
-        // NEW: CALL SIGNALING LOGIC (Ringing System)
-        // -------------------------------------------------------------------------
-
-        // A. INITIATE CALL (Sets signal in database)
+        // Calls Logic
         window.initiateCall = async function(type) {
             if (!activeGroupId || !activeGroupData) return;
-
-            // 1. Create an "active_call" document for this group
             try {
                 await setDoc(doc(db, "active_calls", activeGroupId), {
-                    groupId: activeGroupId,
-                    groupName: activeGroupData.name,
-                    callerId: currentUser.uid,
-                    callerName: currentUserName,
-                    callerAvatar: currentUserAvatar,
-                    callType: type,
-                    status: 'ringing', // Status: ringing -> active -> ended
-                    timestamp: serverTimestamp()
+                    groupId: activeGroupId, groupName: activeGroupData.name, callerId: currentUser.uid, callerName: currentUserName, callerAvatar: currentUserAvatar, callType: type, status: 'ringing', timestamp: serverTimestamp()
                 });
-
-                // Automatically join the room yourself immediately
                 executeJitsiConnection(activeGroupId, activeGroupData.name, type);
-
-            } catch (error) {
-                console.error("Error initiating call signal: ", error);
-                alert("Failed to start call. Check connection.");
-            }
+            } catch (error) { alert("Failed to start call."); }
         };
 
-        // B. LISTEN FOR INCOMING CALLS GLOBALLY
         function listenForGlobalIncomingCalls() {
-            // Listen to the "active_calls" collection
-            // In production, you might restrict this via rules to only groups the user is a member of.
             callListenerUnsubscribe = onSnapshot(collection(db, "active_calls"), (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added" || change.type === "modified") {
-                        const callData = change.doc.data();
-                        
-                        // Check if this call is relevant to me:
-                        // 1. Status is 'ringing'
-                        // 2. I am NOT the caller
-                        // 3. (Ideally) I am a member of this group
-                        
-                        if (callData.status === 'ringing' && callData.callerId !== currentUser.uid) {
-                            showIncomingCallOverlay(callData);
-                        }
-                        
-                        // If call ended, hide ringing overlay if it's currently showing this call
-                        if (callData.status === 'ended') {
-                            hideIncomingCallOverlay();
-                        }
+                    const callData = change.doc.data();
+                    if ((change.type === "added" || change.type === "modified") && callData.status === 'ringing' && callData.callerId !== currentUser.uid) {
+                        // Check if part of group
+                        const groupDoc = allGroups.find(g => g.id === callData.groupId);
+                        if (groupDoc && groupDoc.members.includes(currentUser.uid)) showIncomingCallOverlay(callData);
                     }
-                    if (change.type === "removed") {
-                        hideIncomingCallOverlay();
-                    }
+                    if (change.type === "removed" || callData.status === 'ended') hideIncomingCallOverlay();
                 });
             });
         }
 
-        // C. SHOW RINGING UI
         let currentRingingCallData = null;
-
         function showIncomingCallOverlay(callData) {
             currentRingingCallData = callData;
-            
-            const overlay = document.getElementById('incomingCallOverlay');
             document.getElementById('incomingCallerName').textContent = callData.callerName;
             document.getElementById('incomingGroupName').textContent = `Incoming to ${callData.groupName}`;
             document.getElementById('incomingCallerAvatar').src = callData.callerAvatar;
             document.getElementById('incomingCallType').textContent = callData.callType === 'video' ? 'Incoming Video Call' : 'Incoming Audio Call';
-            
-            const icon = document.getElementById('incomingAcceptIcon');
-            icon.className = callData.callType === 'video' ? 'fas fa-video text-white' : 'fas fa-phone text-white';
-
+            document.getElementById('incomingAcceptIcon').className = callData.callType === 'video' ? 'fas fa-video text-white' : 'fas fa-phone text-white';
+            const overlay = document.getElementById('incomingCallOverlay');
             overlay.classList.remove('hidden');
             setTimeout(() => { overlay.classList.remove('opacity-0'); overlay.classList.add('opacity-100'); }, 10);
-            
-            // Play Ringtone
-            if (ringtone) {
-                ringtone.play().catch(e => console.log("Browser blocked autoplaying audio"));
-            }
+            if (ringtone) ringtone.play().catch(()=>{});
         }
 
         function hideIncomingCallOverlay() {
@@ -858,95 +972,61 @@
             overlay.classList.remove('opacity-100');
             overlay.classList.add('opacity-0');
             setTimeout(() => overlay.classList.add('hidden'), 500);
-            
-            if (ringtone) {
-                ringtone.pause();
-                ringtone.currentTime = 0;
-            }
+            if (ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
             currentRingingCallData = null;
         }
 
-        // D. USER RESPONDS TO RINGING
-        window.declineCall = function() {
-            hideIncomingCallOverlay();
-            // We don't change DB state to 'ended' because others might still answer
-        };
+        window.declineCall = function() { hideIncomingCallOverlay(); };
 
         window.answerCall = function() {
             if (!currentRingingCallData) return;
-            
             hideIncomingCallOverlay();
-            
-            // Mark the call as "active" so it stops ringing for others (optional depending on UX desired)
-            updateDoc(doc(db, "active_calls", currentRingingCallData.groupId), {
-                status: 'active'
-            });
-
-            // Execute the actual connection
+            updateDoc(doc(db, "active_calls", currentRingingCallData.groupId), { status: 'active' });
             executeJitsiConnection(currentRingingCallData.groupId, currentRingingCallData.groupName, currentRingingCallData.callType);
         };
 
-        // E. EXECUTE THE ACTUAL JITSI CONNECTION
         function executeJitsiConnection(groupId, groupName, type) {
             const overlay = document.getElementById('callOverlay');
             const container = document.getElementById('jitsi-container');
-            
             document.getElementById('jitsiRoomName').textContent = groupName;
             document.getElementById('jitsiCallType').textContent = type === 'video' ? 'Live Video Call' : 'Live Audio Call';
             document.getElementById('activeCallHeaderIcon').className = type === 'video' ? 'fas fa-video' : 'fas fa-phone';
 
-            // Show Overlay
             overlay.classList.remove('hidden');
             setTimeout(() => { overlay.classList.remove('opacity-0'); overlay.classList.add('opacity-100'); }, 10);
-
-            // Clean up previous instance
             if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
             container.innerHTML = '';
-
-            // Unique Room Name
+            
             const safeRoomName = "IEDC_Connect_GroupCall_" + groupId.replace(/[^a-zA-Z0-9]/g, '');
-
-            const options = {
-                roomName: safeRoomName,
-                width: '100%', height: '100%',
-                parentNode: container,
-                userInfo: { displayName: currentUserName },
+            jitsiApi = new JitsiMeetExternalAPI('meet.jit.si', {
+                roomName: safeRoomName, width: '100%', height: '100%', parentNode: container, userInfo: { displayName: currentUserName },
                 configOverwrite: { startAudioOnly: type === 'audio', prejoinPageEnabled: false, disableDeepLinking: true }
-            };
-
-            jitsiApi = new JitsiMeetExternalAPI('meet.jit.si', options);
-
-            jitsiApi.addEventListener('videoConferenceLeft', () => {
-                window.endCall();
             });
+            jitsiApi.addEventListener('videoConferenceLeft', () => window.endCall());
+            
+            if(activeGroupId !== groupId) window.openGroup(groupId); // Auto-open the chat
         }
 
-        // F. END CALL
         window.endCall = function() {
             const overlay = document.getElementById('callOverlay');
-            
             if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
-            
             overlay.classList.remove('opacity-100');
             overlay.classList.add('opacity-0');
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-                document.getElementById('jitsi-container').innerHTML = '';
-            }, 500);
-
-            // If we are currently in an active group, we can try to mark the call as ended
-            // so it stops ringing for others
-            if (activeGroupId) {
-                updateDoc(doc(db, "active_calls", activeGroupId), { status: 'ended' }).catch(e => console.log(e));
-            }
+            setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('jitsi-container').innerHTML = ''; }, 500);
+            if (activeGroupId) updateDoc(doc(db, "active_calls", activeGroupId), { status: 'ended' }).catch(()=>{});
         };
 
-        // Logout
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
+        const logOutLogic = async () => {
+            const btns = [document.getElementById('logoutBtn'), document.getElementById('mobileLogoutBtn')];
+            btns.forEach(b => { if(b) b.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; });
             await signOut(auth);
-            window.location.href = 'login.html';
-        });
-
+            window.location.href = 'connect-login.html';
+        };
+        document.getElementById('logoutBtn').addEventListener('click', logOutLogic);
+        const mobLog = document.getElementById('mobileLogoutBtn');
+        if(mobLog) mobLog.addEventListener('click', logOutLogic);
     </script>
 </body>
 </html>
+
+
