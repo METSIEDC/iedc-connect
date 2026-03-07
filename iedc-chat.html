@@ -11,54 +11,73 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="IEDC Connect">
     
-    <!-- App Icons for iOS -->
-    <link rel="apple-touch-icon" href="./app-logo.jpg">
-    
     <title>IEDC Connect | Spatial Chat</title>
     
-    <!-- PWA Manifest Injection (Using your app-logo.jpg) -->
+    <!-- ADVANCED PWA INJECTION (Single-File Architecture) -->
     <script>
-        const manifest = {
-            "name": "IEDC Connect",
-            "short_name": "Connect",
-            "description": "MET's IEDC Real-time Community Chat",
-            "start_url": "./iedc-chat.html",
-            "display": "standalone",
-            "background_color": "#0f1115",
-            "theme_color": "#0f1115",
-            "icons": [
-                {
-                    "src": "./MSEM.jpg",
-                    "sizes": "192x192",
-                    "type": "image/jpeg",
-                    "purpose": "any maskable"
-                },
-                {
-                    "src": "./MSEM.jpg",
-                    "sizes": "512x512",
-                    "type": "image/jpeg",
-                    "purpose": "any maskable"
-                }
-            ]
-        };
-        const stringManifest = JSON.stringify(manifest);
-        const blob = new Blob([stringManifest], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
-        document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestURL}">`);
-        
-        // Safe Service Worker that does NOT block Firebase Websockets
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                const swCode = `
-                    self.addEventListener('install', (e) => { self.skipWaiting(); });
-                    self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
-                    self.addEventListener('fetch', (e) => { }); // Empty fetch is required for PWA, but allows normal network passthrough
-                `;
-                const swBlob = new Blob([swCode], {type: 'application/javascript'});
-                const swUrl = URL.createObjectURL(swBlob);
-                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration failed: ', err));
-            });
-        }
+        (function() {
+            // 1. Generate Manifest dynamically with absolute start_url
+            const currentUrl = window.location.href.split('?')[0];
+            const manifest = {
+                "name": "IEDC Connect",
+                "short_name": "Connect",
+                "description": "MET's IEDC Real-time Community Chat",
+                "start_url": currentUrl,
+                "display": "standalone",
+                "background_color": "#0f1115",
+                "theme_color": "#0f1115",
+                "icons": [
+                    {
+                        "src": "https://ui-avatars.com/api/?name=IC&background=3b82f6&color=fff&size=192",
+                        "sizes": "192x192",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    },
+                    {
+                        "src": "https://ui-avatars.com/api/?name=IC&background=3b82f6&color=fff&size=512",
+                        "sizes": "512x512",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    }
+                ]
+            };
+            
+            const manifestString = JSON.stringify(manifest);
+            const manifestBlob = new Blob([manifestString], {type: 'application/json'});
+            const manifestUrl = URL.createObjectURL(manifestBlob);
+            
+            const linkEl = document.createElement('link');
+            linkEl.rel = 'manifest';
+            linkEl.href = manifestUrl;
+            document.head.appendChild(linkEl);
+
+            // 2. Generate and Register Service Worker for Offline capability
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    const swCode = `
+                        const CACHE_NAME = 'iedc-connect-v2';
+                        self.addEventListener('install', (e) => { 
+                            self.skipWaiting(); 
+                        });
+                        self.addEventListener('activate', (e) => { 
+                            e.waitUntil(self.clients.claim()); 
+                        });
+                        self.addEventListener('fetch', (e) => { 
+                            // Network first, fallback to cache for PWA offline support
+                            e.respondWith(
+                                fetch(e.request).catch(() => caches.match(e.request))
+                            );
+                        });
+                    `;
+                    const swBlob = new Blob([swCode], {type: 'application/javascript'});
+                    const swUrl = URL.createObjectURL(swBlob);
+                    
+                    navigator.serviceWorker.register(swUrl)
+                        .then(reg => console.log('PWA Service Worker registered successfully.'))
+                        .catch(err => console.log('PWA SW registration failed: ', err));
+                });
+            }
+        })();
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -284,32 +303,6 @@
 
     <!-- MODALS -->
 
-    <!-- Manual Install Guide Modal -->
-    <div id="installGuideModal" class="fixed inset-0 bg-black/80 backdrop-blur-xl z-[3000] hidden flex items-center justify-center p-4 transition-opacity opacity-0">
-        <div class="bg-[#151515] border border-white/10 w-full max-w-sm rounded-3xl p-8 shadow-2xl relative transform transition-transform scale-95 duration-300 text-center">
-            <button onclick="closeModal('installGuideModal')" class="absolute top-4 right-4 text-white/50 hover:text-white p-2"><i class="fas fa-times"></i></button>
-            
-            <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white text-3xl shadow-lg border border-white/20">
-                <i class="fas fa-download"></i>
-            </div>
-            
-            <h2 class="text-xl font-bold text-white mb-2">Install App</h2>
-            <p class="text-white/60 text-sm mb-6">Install IEDC Connect to your home screen for full-screen access and a better experience.</p>
-            
-            <div id="iosGuide" class="hidden flex-col gap-3 text-left bg-white/5 p-4 rounded-xl border border-white/10">
-                <p class="text-sm text-white"><span class="font-bold text-blue-400">1.</span> Tap the <b>Share</b> <i class="fas fa-share-square mx-1 text-white/50"></i> button at the bottom of Safari.</p>
-                <p class="text-sm text-white"><span class="font-bold text-blue-400">2.</span> Scroll down and tap <b>Add to Home Screen</b> <i class="fas fa-plus-square mx-1 text-white/50"></i>.</p>
-            </div>
-
-            <div id="androidGuide" class="hidden flex-col gap-3 text-left bg-white/5 p-4 rounded-xl border border-white/10">
-                <p class="text-sm text-white"><span class="font-bold text-blue-400">1.</span> Tap the <b>Menu</b> <i class="fas fa-ellipsis-v mx-1 text-white/50"></i> icon at the top right of Chrome.</p>
-                <p class="text-sm text-white"><span class="font-bold text-blue-400">2.</span> Tap <b>Install App</b> or <b>Add to Home screen</b>.</p>
-            </div>
-            
-            <button onclick="closeModal('installGuideModal')" class="w-full mt-6 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition">Got it</button>
-        </div>
-    </div>
-
     <!-- Create Group Modal -->
     <div id="createGroupModal" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-4 transition-opacity opacity-0 pt-[env(safe-area-inset-top)]">
         <div class="bg-[#151515] border border-white/10 w-full max-w-md rounded-3xl p-8 shadow-2xl relative transform transition-transform scale-95 duration-300">
@@ -366,22 +359,12 @@
         </div>
     </div>
 
-    <!-- PWA Install Prompt (Android / Desktop) -->
+    <!-- PWA Install Prompt (Native, non-intrusive) -->
     <div id="pwaInstallBanner" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full shadow-2xl z-[3000] flex items-center gap-4 transition-transform translate-y-[-150%]">
         <i class="fas fa-download"></i>
-        <span class="text-sm font-semibold whitespace-nowrap">Install IEDC Connect</span>
+        <span class="text-sm font-semibold whitespace-nowrap">Install App</span>
         <button id="pwaInstallBtn" class="bg-white text-blue-600 px-3 py-1 rounded-full text-xs font-bold ml-2">Install</button>
         <button onclick="document.getElementById('pwaInstallBanner').style.display='none'" class="text-white/70 hover:text-white ml-2"><i class="fas fa-times"></i></button>
-    </div>
-
-    <!-- iOS Specific PWA Instruction Banner -->
-    <div id="iosInstallBanner" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-[90%] max-w-sm bg-black/80 backdrop-blur-xl border border-white/10 text-white p-4 rounded-2xl shadow-2xl z-[3000] hidden flex-col items-center text-center">
-        <button onclick="document.getElementById('iosInstallBanner').style.display='none'" class="absolute top-2 right-3 text-white/50 hover:text-white"><i class="fas fa-times"></i></button>
-        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-blue-400 text-xl mb-2">
-            <i class="fas fa-share-square"></i>
-        </div>
-        <h3 class="font-bold text-sm mb-1">Install App on iPhone</h3>
-        <p class="text-xs text-white/70">Tap the <b>Share</b> icon at the bottom of Safari, then tap <b>"Add to Home Screen"</b> to install IEDC Connect.</p>
     </div>
 
     <!-- Main Application UI -->
@@ -398,9 +381,6 @@
             
             <button onclick="openModal('themeModal')" title="Theme & Wallpaper" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
                 <i class="fas fa-paint-brush text-lg"></i>
-            </button>
-            <button onclick="showInstallGuide()" title="Install App" class="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition shadow-lg mb-2">
-                <i class="fas fa-download text-lg"></i>
             </button>
             <div class="pt-6 border-t border-white/10 w-full flex justify-center">
                 <button id="logoutBtn" class="w-12 h-12 rounded-full text-white/40 hover:text-red-400 flex items-center justify-center transition hover:bg-red-400/10"><i class="fas fa-sign-out-alt text-lg"></i></button>
@@ -457,7 +437,7 @@
                 <div class="px-6 py-4 shrink-0">
                     <div class="relative">
                         <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm"></i>
-                        <input type="text" id="groupSearchInput" placeholder="Search..." class="glass-input w-full rounded-2xl py-2.5 pl-11 pr-4 text-sm">
+                        <input type="text" id="groupSearchInput" placeholder="Search groups..." class="glass-input w-full rounded-2xl py-2.5 pl-11 pr-4 text-sm">
                     </div>
                 </div>
 
@@ -521,8 +501,8 @@
                 <div class="lg:hidden shrink-0 border-t border-white/10 bg-white/5 backdrop-blur-xl flex justify-around p-3 z-20">
                     <button onclick="switchSection('chats')" class="flex flex-col items-center gap-1 text-white p-2 w-16"><i class="fas fa-comment text-lg"></i><span class="text-[9px]">Chats</span></button>
                     <button onclick="switchSection('requests')" class="flex flex-col items-center gap-1 text-white/60 hover:text-white p-2 w-16"><i class="fas fa-user-friends text-lg"></i><span class="text-[9px]">Requests</span></button>
-                    <button onclick="showInstallGuide()" class="flex flex-col items-center gap-1 text-emerald-400 p-2 w-16"><i class="fas fa-download text-lg"></i><span class="text-[9px]">Install</span></button>
                     <button onclick="openModal('themeModal')" class="flex flex-col items-center gap-1 text-white/60 hover:text-white p-2 w-16"><i class="fas fa-paint-brush text-lg"></i><span class="text-[9px]">Theme</span></button>
+                    <button id="mobileLogoutBtn" class="flex flex-col items-center gap-1 text-white/60 hover:text-red-400 p-2 w-16"><i class="fas fa-sign-out-alt text-lg"></i><span class="text-[9px]">Logout</span></button>
                 </div>
             </div>
 
@@ -599,17 +579,17 @@
                             <h4 class="text-[10px] text-blue-400 uppercase tracking-widest font-bold">Description</h4>
                             <button id="editDescBtn" class="hidden text-white/40 hover:text-white p-2" onclick="promptEditDesc()"><i class="fas fa-pen text-xs"></i></button>
                         </div>
-                        <p id="infoGroupDesc" class="text-white/70 text-sm font-light leading-relaxed break-words">No description</p>
+                        <p id="infoGroupDesc" class="text-white/70 text-sm font-light leading-relaxed break-words">No description provided.</p>
                     </div>
                     <div id="adminSettingsSection" class="hidden p-6 border-b border-white/5 bg-blue-500/5">
                         <h4 class="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-5 flex items-center gap-2"><i class="fas fa-shield-alt"></i> Settings</h4>
                         <div class="flex items-center justify-between mb-6">
                             <div><p class="text-white text-sm font-medium">Edit Info</p></div>
-                            <select id="settingEditInfo" onchange="updateGroupSetting('editInfo', this.value)" class="bg-black/50 border border-white/10 text-white text-xs rounded-lg py-1 px-2 outline-none"><option value="all">All</option><option value="admins">Admins Only</option></select>
+                            <select id="settingEditInfo" onchange="updateGroupSetting('editInfo', this.value)" class="bg-black/50 border border-white/10 text-white text-xs rounded-lg py-1 px-2 outline-none"><option value="all">All Members</option><option value="admins">Admins Only</option></select>
                         </div>
                         <div class="flex items-center justify-between mb-4">
                             <div><p class="text-white text-sm font-medium">Send Messages</p></div>
-                            <select id="settingSendMsg" onchange="updateGroupSetting('sendMessages', this.value)" class="bg-black/50 border border-white/10 text-white text-xs rounded-lg py-1 px-2 outline-none"><option value="all">All</option><option value="admins">Admins Only</option></select>
+                            <select id="settingSendMsg" onchange="updateGroupSetting('sendMessages', this.value)" class="bg-black/50 border border-white/10 text-white text-xs rounded-lg py-1 px-2 outline-none"><option value="all">All Members</option><option value="admins">Admins Only</option></select>
                         </div>
                         <button onclick="generateInviteLink()" class="w-full mt-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold py-3 rounded-xl transition"><i class="fas fa-link"></i> Copy Invite Link</button>
                     </div>
@@ -624,23 +604,6 @@
 
     <!-- Global Scripts -->
     <script>
-        // Install Guide Logic
-        window.showInstallGuide = function() {
-            const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-            
-            document.getElementById('iosGuide').classList.add('hidden');
-            document.getElementById('androidGuide').classList.add('hidden');
-            
-            if(isIos) {
-                document.getElementById('iosGuide').classList.remove('hidden');
-                document.getElementById('iosGuide').classList.add('flex');
-            } else {
-                document.getElementById('androidGuide').classList.remove('hidden');
-                document.getElementById('androidGuide').classList.add('flex');
-            }
-            openModal('installGuideModal');
-        };
-
         window.switchSection = function(section) {
             document.querySelectorAll('.menu-nav-btn').forEach(btn => {
                 btn.classList.remove('bg-glass-active', 'text-white');
@@ -682,20 +645,6 @@
                 document.getElementById('pwaInstallBanner').style.display = 'none';
                 if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; }
             });
-        }
-
-        // Custom iOS Install Instruction Logic
-        const isIos = () => {
-            const userAgent = window.navigator.userAgent.toLowerCase();
-            return /iphone|ipad|ipod/.test(userAgent);
-        }
-        const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
-        
-        if (isIos() && !isInStandaloneMode()) {
-            setTimeout(() => {
-                const iosBanner = document.getElementById('iosInstallBanner');
-                if(iosBanner) iosBanner.style.display = 'flex';
-            }, 2000);
         }
     </script>
 
@@ -1036,7 +985,7 @@
                 if (filterText && msg.type !== 'system' && msg.text && !msg.text.toLowerCase().includes(filterText.toLowerCase())) return;
 
                 if(msg.type === 'system') {
-                    container.innerHTML += `<div class="text-center my-4 w-full"><span class="bg-black/30 text-white/50 text-[10px] uppercase font-semibold px-4 py-1.5 rounded-full border border-white/5">${msg.text}</span></div>`;
+                    container.innerHTML += `<div class="text-center my-4 w-full"><span class="bg-black/30 backdrop-blur-md text-white/50 text-[10px] uppercase font-semibold px-4 py-1.5 rounded-full border border-white/5">${msg.text}</span></div>`;
                     lastSenderId = null; return;
                 }
 
