@@ -99,11 +99,14 @@
             border-top-left-radius: 4px;
         }
         .bubble-out {
-            background: rgba(59, 130, 246, 0.2); /* Soft blue translucent */
+            background: rgba(59, 130, 246, 0.2);
             border: 1px solid rgba(59, 130, 246, 0.3);
             border-radius: 18px;
             border-top-right-radius: 4px;
         }
+        
+        .glass-hover { transition: all 0.3s ease; }
+        .glass-hover:hover { background: rgba(255, 255, 255, 0.08); }
 
         /* Mobile specific layout transitions */
         @media (max-width: 1024px) {
@@ -130,20 +133,45 @@
 
     <div class="bg-overlay"></div>
 
+    <!-- CALL OVERLAY (Hidden by default) -->
+    <div id="callOverlay" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[1000] hidden flex-col items-center justify-center text-white transition-opacity duration-500 opacity-0">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2000')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
+        <div class="relative z-10 text-center mb-12 flex flex-col items-center">
+            <div id="callAvatar" class="w-32 h-32 rounded-full mb-6 border-4 border-white/10 shadow-[0_0_50px_rgba(59,130,246,0.3)] animate-pulse bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-5xl">
+                <i class="fas fa-globe text-white"></i>
+            </div>
+            <h2 id="callTypeLabel" class="text-blue-400 text-xs font-bold uppercase tracking-[0.2em] mb-2">Calling...</h2>
+            <h1 id="callNameLabel" class="text-4xl md:text-5xl font-bold tracking-tight mb-4">IEDC Global Network</h1>
+            <p id="callTimer" class="text-lg font-mono text-white/70 tracking-widest">Connecting...</p>
+        </div>
+        
+        <div class="relative z-10 flex items-center justify-center gap-6 mt-8">
+            <button class="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-all backdrop-blur-md">
+                <i class="fas fa-microphone text-white"></i>
+            </button>
+            <button class="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-all backdrop-blur-md">
+                <i class="fas fa-video text-white"></i>
+            </button>
+            <button onclick="endCall()" class="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-3xl transition-all shadow-[0_0_30px_rgba(239,68,68,0.5)] transform hover:scale-105">
+                <i class="fas fa-phone-slash text-white"></i>
+            </button>
+        </div>
+    </div>
+
     <div class="w-full max-w-[1500px] h-full flex items-center relative z-10">
         
         <!-- Floating Action Bar (Far Left) -->
         <div class="floating-nav hidden xl:flex flex-col items-center gap-6 py-6 px-3 rounded-[30px] mr-6 z-20">
-            <button class="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-lg transition hover:bg-white/20">
+            <button onclick="switchSection('chats')" class="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-lg transition hover:bg-white/20">
                 <i class="fas fa-comment text-lg"></i>
             </button>
-            <button class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
+            <button onclick="startCall('video')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
                 <i class="fas fa-video text-lg"></i>
             </button>
-            <button class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
+            <button onclick="switchSection('requests')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
                 <i class="fas fa-user-friends text-lg"></i>
             </button>
-            <button class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
+            <button onclick="switchSection('archive')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
                 <i class="fas fa-archive text-lg"></i>
             </button>
             <div class="mt-auto pt-6 border-t border-white/10">
@@ -173,23 +201,24 @@
 
                 <!-- Menu Items -->
                 <div class="space-y-1 mb-8">
-                    <button class="w-full flex items-center justify-between p-3.5 bg-glass-active rounded-2xl transition">
-                        <div class="flex items-center gap-3 text-white text-sm font-medium">
-                            <i class="fas fa-comment bg-transparent text-white/70 w-5 text-center"></i> Chats
+                    <button id="nav-chats" onclick="switchSection('chats')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 bg-glass-active text-white rounded-2xl transition">
+                        <div class="flex items-center gap-3 text-sm font-medium">
+                            <i class="fas fa-comment bg-transparent w-5 text-center"></i> Chats
                         </div>
-                        <span class="bg-glass-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full">New</span>
+                        <span class="bg-glass-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Live</span>
                     </button>
-                    <button class="w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
+                    <button id="nav-marketplace" onclick="switchSection('marketplace')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
                         <div class="flex items-center gap-3 text-sm font-medium">
                             <i class="fas fa-store bg-transparent w-5 text-center"></i> Marketplace
                         </div>
                     </button>
-                    <button class="w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
+                    <button id="nav-requests" onclick="switchSection('requests')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
                         <div class="flex items-center gap-3 text-sm font-medium">
                             <i class="fas fa-comment-dots bg-transparent w-5 text-center"></i> Message requests
                         </div>
+                        <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>
                     </button>
-                    <button class="w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
+                    <button id="nav-archive" onclick="switchSection('archive')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
                         <div class="flex items-center gap-3 text-sm font-medium">
                             <i class="fas fa-archive bg-transparent w-5 text-center"></i> Archive
                         </div>
@@ -200,9 +229,9 @@
                 <div class="flex-grow overflow-y-auto pr-2">
                     <h3 class="text-white/40 text-xs font-semibold mb-4 px-2 tracking-wide">Communities</h3>
                     <div class="space-y-3">
-                        <div class="flex items-center gap-3 px-2 py-1 cursor-pointer group">
+                        <div onclick="switchCommunity('Web Developers')" class="flex items-center gap-3 px-2 py-1 cursor-pointer group">
                             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs shadow-lg transform group-hover:scale-105 transition">
-                                <i class="fas fa-hashtag"></i>
+                                <i class="fas fa-code"></i>
                             </div>
                             <div class="flex-grow overflow-hidden">
                                 <h4 class="text-white/90 text-xs font-medium truncate group-hover:text-white transition">Web Developers</h4>
@@ -210,102 +239,182 @@
                             </div>
                             <div class="w-1.5 h-1.5 rounded-full bg-glass-accent shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
                         </div>
-                        <div class="flex items-center gap-3 px-2 py-1 cursor-pointer group opacity-60 hover:opacity-100">
+                        <div onclick="switchCommunity('UI/UX Designers')" class="flex items-center gap-3 px-2 py-1 cursor-pointer group opacity-60 hover:opacity-100 transition-opacity">
                             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-green-400 to-blue-500 flex items-center justify-center text-white text-xs shadow-lg transform group-hover:scale-105 transition">
-                                <i class="fas fa-hashtag"></i>
+                                <i class="fas fa-pen-nib"></i>
                             </div>
                             <div class="flex-grow overflow-hidden">
                                 <h4 class="text-white/90 text-xs font-medium truncate group-hover:text-white transition">UI/UX Designers</h4>
                                 <p class="text-white/40 text-[10px]">1,432 active</p>
                             </div>
-                            <div class="w-1.5 h-1.5 rounded-full bg-glass-accent shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Column 2: Chat List -->
+            <!-- Column 2: List / Navigation Area -->
             <div id="col-list" class="w-full lg:w-[340px] flex flex-col border-r border-glass-border shrink-0 h-full bg-glass-panel lg:bg-transparent">
                 
                 <!-- Mobile Header Area inside Col 2 -->
                 <div class="lg:hidden flex items-center justify-between p-6 pb-2">
                     <div class="flex items-center gap-3">
                         <img id="myAvatarMobile" src="https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff" class="w-8 h-8 rounded-full">
-                        <h2 class="text-white font-semibold">Chats</h2>
+                        <h2 id="mobile-col-list-title" class="text-white font-semibold">Chats</h2>
                     </div>
                     <a href="dashboard.html" class="text-white/50"><i class="fas fa-cog"></i></a>
+                </div>
+
+                <!-- Desktop Header (Dynamic based on section) -->
+                <div class="hidden lg:block px-6 py-5 border-b border-glass-border shrink-0">
+                    <h2 id="desktop-col-list-title" class="text-xl font-bold text-white tracking-wide">Chats</h2>
                 </div>
 
                 <!-- Search -->
                 <div class="px-6 py-4 shrink-0">
                     <div class="relative">
                         <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm"></i>
-                        <input type="text" placeholder="Search" class="glass-input w-full rounded-2xl py-2.5 pl-11 pr-4 text-sm">
+                        <input type="text" placeholder="Search..." class="glass-input w-full rounded-2xl py-2.5 pl-11 pr-4 text-sm">
                     </div>
                 </div>
 
-                <!-- Active "Stories" Avatars -->
-                <div class="flex gap-4 overflow-x-auto px-6 pb-6 pt-2 shrink-0 scrollbar-hide border-b border-glass-border">
-                    <div class="flex flex-col items-center gap-2 cursor-pointer shrink-0 group">
-                        <div class="w-14 h-14 rounded-full p-0.5 border-2 border-glass-accent relative transition group-hover:scale-105">
-                            <img src="assets/images/team/CHRISS.jpg" class="w-full h-full rounded-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=Chris&background=random'">
-                            <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#1a1a1a] rounded-full"></div>
+                <!-- SECTION: CHATS (Default) -->
+                <div id="chats-view" class="flex flex-col h-full overflow-hidden">
+                    <!-- Active "Stories" Avatars -->
+                    <div class="flex gap-4 overflow-x-auto px-6 pb-6 pt-2 shrink-0 scrollbar-hide border-b border-glass-border">
+                        <div class="flex flex-col items-center gap-2 cursor-pointer shrink-0 group">
+                            <div class="w-14 h-14 rounded-full p-0.5 border-2 border-glass-accent relative transition group-hover:scale-105">
+                                <img src="assets/images/team/CHRISS.jpg" class="w-full h-full rounded-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=Chris&background=random'">
+                                <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#1a1a1a] rounded-full"></div>
+                            </div>
+                            <span class="text-[10px] text-white/70">Chris</span>
                         </div>
-                        <span class="text-[10px] text-white/70">Chris</span>
+                        <div class="flex flex-col items-center gap-2 cursor-pointer shrink-0 group">
+                            <div class="w-14 h-14 rounded-full p-0.5 border-2 border-white/20 relative transition group-hover:scale-105">
+                                <img src="assets/images/team/DEENA.jpg" class="w-full h-full rounded-full object-cover grayscale" onerror="this.src='https://ui-avatars.com/api/?name=Deena&background=random'">
+                            </div>
+                            <span class="text-[10px] text-white/50">Deena</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 cursor-pointer shrink-0 group">
+                            <div class="w-14 h-14 rounded-full p-0.5 border-2 border-white/20 relative transition group-hover:scale-105">
+                                <div class="w-full h-full rounded-full bg-white/10 flex items-center justify-center text-white/50"><i class="fas fa-ellipsis-h"></i></div>
+                            </div>
+                            <span class="text-[10px] text-white/50">More</span>
+                        </div>
                     </div>
-                    <div class="flex flex-col items-center gap-2 cursor-pointer shrink-0 group">
-                        <div class="w-14 h-14 rounded-full p-0.5 border-2 border-white/20 relative transition group-hover:scale-105">
-                            <img src="assets/images/team/DEENA.jpg" class="w-full h-full rounded-full object-cover grayscale" onerror="this.src='https://ui-avatars.com/api/?name=Deena&background=random'">
+
+                    <!-- Chat List -->
+                    <div class="flex-grow overflow-y-auto px-4 py-2 space-y-1">
+                        <div onclick="switchCommunity('IEDC Global Network'); openMobileChat();" class="flex items-center gap-4 p-3 rounded-2xl bg-glass-active cursor-pointer">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white shrink-0 shadow-lg relative">
+                                <i class="fas fa-globe text-xl"></i>
+                                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#1a1a1a] rounded-full"></div>
+                            </div>
+                            <div class="flex-grow overflow-hidden">
+                                <div class="flex justify-between items-center mb-1">
+                                    <h4 class="text-white font-semibold text-sm truncate">IEDC Global Network</h4>
+                                    <span class="text-[10px] text-white/50">Now</span>
+                                </div>
+                                <p class="text-xs text-white/70 truncate">Active public discussion</p>
+                            </div>
                         </div>
-                        <span class="text-[10px] text-white/50">Deena</span>
-                    </div>
-                    <div class="flex flex-col items-center gap-2 cursor-pointer shrink-0 group">
-                        <div class="w-14 h-14 rounded-full p-0.5 border-2 border-white/20 relative transition group-hover:scale-105">
-                            <img src="assets/images/team/HABEEB.jpg" class="w-full h-full rounded-full object-cover grayscale" onerror="this.src='https://ui-avatars.com/api/?name=Habeeb&background=random'">
+
+                        <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-glass-hover transition cursor-pointer opacity-50">
+                            <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
+                                <i class="fas fa-bullhorn text-xl"></i>
+                            </div>
+                            <div class="flex-grow overflow-hidden">
+                                <div class="flex justify-between items-center mb-1">
+                                    <h4 class="text-white font-semibold text-sm truncate">Announcements</h4>
+                                    <span class="text-[10px] text-white/50">1:18 pm</span>
+                                </div>
+                                <p class="text-xs text-white/50 truncate">Read-only channel</p>
+                            </div>
                         </div>
-                        <span class="text-[10px] text-white/50">Habeeb</span>
-                    </div>
-                    <div class="flex flex-col items-center gap-2 cursor-pointer shrink-0 group">
-                        <div class="w-14 h-14 rounded-full p-0.5 border-2 border-white/20 relative transition group-hover:scale-105">
-                            <div class="w-full h-full rounded-full bg-white/10 flex items-center justify-center text-white/50"><i class="fas fa-ellipsis-h"></i></div>
-                        </div>
-                        <span class="text-[10px] text-white/50">More</span>
                     </div>
                 </div>
 
-                <!-- Chat List -->
-                <div class="flex-grow overflow-y-auto px-4 py-2 space-y-1">
+                <!-- SECTION: MARKETPLACE -->
+                <div id="marketplace-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-3 hidden">
+                    <div class="flex flex-col gap-1 px-2 mb-2">
+                        <span class="text-[10px] uppercase tracking-widest text-white/40 font-bold">Hardware & Components</span>
+                    </div>
+                    <div class="p-3 rounded-2xl border border-white/5 bg-white/5 glass-hover cursor-pointer flex gap-4 items-center">
+                        <div class="w-16 h-16 rounded-xl bg-[#0a0c0f] flex items-center justify-center shrink-0 border border-white/10">
+                            <i class="fas fa-microchip text-2xl text-blue-400"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-white font-semibold text-sm">Arduino Uno R3</h4>
+                            <p class="text-green-400 text-[11px] font-bold mt-1">₹450 / Rent: Free</p>
+                            <p class="text-white/40 text-[9px] mt-1 uppercase tracking-wider">Posted by Hardware Lab</p>
+                        </div>
+                        <button class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"><i class="fas fa-shopping-cart text-xs"></i></button>
+                    </div>
+                    <div class="p-3 rounded-2xl border border-white/5 bg-white/5 glass-hover cursor-pointer flex gap-4 items-center">
+                        <div class="w-16 h-16 rounded-xl bg-[#0a0c0f] flex items-center justify-center shrink-0 border border-white/10">
+                            <i class="fas fa-cube text-2xl text-purple-400"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-white font-semibold text-sm">3D Printing PLA</h4>
+                            <p class="text-green-400 text-[11px] font-bold mt-1">₹5 / gram</p>
+                            <p class="text-white/40 text-[9px] mt-1 uppercase tracking-wider">Posted by Makerspace</p>
+                        </div>
+                        <button class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"><i class="fas fa-shopping-cart text-xs"></i></button>
+                    </div>
+                </div>
+
+                <!-- SECTION: MESSAGE REQUESTS -->
+                <div id="requests-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-3 hidden">
+                    <div class="p-4 rounded-2xl border border-white/5 bg-white/5 glass-hover flex flex-col gap-3">
+                        <div class="flex items-center gap-3">
+                            <img src="https://ui-avatars.com/api/?name=Startup+Team&background=random" class="w-10 h-10 rounded-full border border-white/10">
+                            <div>
+                                <h4 class="text-white font-semibold text-sm">Fintech Innovators</h4>
+                                <p class="text-white/50 text-[11px]">Wants to connect with you.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-2 rounded-lg transition shadow-lg">Accept</button>
+                            <button class="flex-1 bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold py-2 rounded-lg transition">Decline</button>
+                        </div>
+                    </div>
                     
-                    <!-- Active Global Chat Item -->
-                    <div onclick="openMobileChat()" class="flex items-center gap-4 p-3 rounded-2xl bg-glass-active cursor-pointer">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white shrink-0 shadow-lg relative">
-                            <i class="fas fa-globe text-xl"></i>
-                            <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#1a1a1a] rounded-full"></div>
-                        </div>
-                        <div class="flex-grow overflow-hidden">
-                            <div class="flex justify-between items-center mb-1">
-                                <h4 class="text-white font-semibold text-sm truncate">IEDC Global</h4>
-                                <span class="text-[10px] text-white/50">Now</span>
+                    <div class="p-4 rounded-2xl border border-white/5 bg-white/5 glass-hover flex flex-col gap-3">
+                        <div class="flex items-center gap-3">
+                            <img src="https://ui-avatars.com/api/?name=John+Doe&background=random" class="w-10 h-10 rounded-full border border-white/10">
+                            <div>
+                                <h4 class="text-white font-semibold text-sm">John Doe</h4>
+                                <p class="text-white/50 text-[11px]">Project Collaboration</p>
                             </div>
-                            <p class="text-xs text-white/70 truncate">Tap to join the conversation</p>
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-2 rounded-lg transition shadow-lg">Accept</button>
+                            <button class="flex-1 bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold py-2 rounded-lg transition">Decline</button>
                         </div>
                     </div>
-
-                    <!-- Dummy Item -->
-                    <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-glass-hover transition cursor-pointer opacity-50">
-                        <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
-                            <i class="fas fa-bullhorn text-xl"></i>
-                        </div>
-                        <div class="flex-grow overflow-hidden">
-                            <div class="flex justify-between items-center mb-1">
-                                <h4 class="text-white font-semibold text-sm truncate">Announcements</h4>
-                                <span class="text-[10px] text-white/50">1:18 pm</span>
-                            </div>
-                            <p class="text-xs text-white/50 truncate">Read-only channel</p>
-                        </div>
-                    </div>
-
                 </div>
+
+                <!-- SECTION: ARCHIVE -->
+                <div id="archive-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-2 hidden opacity-60 hover:opacity-100 transition-opacity">
+                    <div class="flex items-center gap-4 p-3 rounded-2xl bg-white/5 cursor-pointer hover:bg-white/10 transition">
+                        <div class="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white/50 shrink-0">
+                            <i class="fas fa-flag-checkered text-xl"></i>
+                        </div>
+                        <div class="flex-grow overflow-hidden">
+                            <h4 class="text-white/70 font-semibold text-sm truncate">Hackathon 2024</h4>
+                            <p class="text-[11px] text-white/40 truncate">Group closed & archived</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 rounded-2xl bg-white/5 cursor-pointer hover:bg-white/10 transition">
+                        <div class="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white/50 shrink-0">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <div class="flex-grow overflow-hidden">
+                            <h4 class="text-white/70 font-semibold text-sm truncate">Batch 22-26 Orientation</h4>
+                            <p class="text-[11px] text-white/40 truncate">Read-only</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Column 3: Active Chat Area -->
@@ -318,18 +427,17 @@
                             <i class="fas fa-arrow-left text-sm"></i>
                         </button>
                         <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-lg relative">
-                            <img src="assets/images/logos/MSEM.jpg" class="w-full h-full rounded-full object-cover opacity-90 mix-blend-screen" onerror="this.style.display='none'">
-                            <i class="fas fa-globe text-xl absolute" style="z-index:-1"></i>
+                            <i id="chat-header-icon" class="fas fa-globe text-xl absolute"></i>
                         </div>
                         <div>
-                            <h2 class="text-lg font-semibold text-white leading-tight">IEDC Global Network</h2>
+                            <h2 id="chat-header-title" class="text-lg font-semibold text-white leading-tight">IEDC Global Network</h2>
                             <p class="text-[11px] text-white/50 font-medium mt-0.5">Community Discussion</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 text-white/60">
                         <button class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition"><i class="fas fa-search text-sm"></i></button>
-                        <button class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition"><i class="fas fa-video text-sm"></i></button>
-                        <button class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition hidden sm:flex"><i class="fas fa-phone text-sm"></i></button>
+                        <button onclick="startCall('video')" title="Video Call" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5"><i class="fas fa-video text-sm text-blue-400"></i></button>
+                        <button onclick="startCall('audio')" title="Voice Call" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5 hidden sm:flex"><i class="fas fa-phone text-sm text-blue-400"></i></button>
                         <button class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition"><i class="fas fa-ellipsis-h text-sm"></i></button>
                     </div>
                 </header>
@@ -398,7 +506,7 @@
         let currentUser = null;
         let currentUserName = "Student";
         let currentUserAvatar = "https://ui-avatars.com/api/?name=Student&background=3b82f6&color=fff";
-        const currentChannelId = "general";
+        let currentChannelId = "general"; // Global DB reference key
 
         // DOM Nodes
         const messagesContainer = document.getElementById('messages-container');
@@ -407,6 +515,8 @@
         const sendBtn = document.getElementById('sendBtn');
         const loadingMessages = document.getElementById('loadingMessages');
         const mainApp = document.getElementById('main-app');
+
+        // ---- UI INTERACTIONS LOGIC ----
 
         // Mobile View Toggling
         window.openMobileChat = function() {
@@ -417,9 +527,113 @@
         document.getElementById('backToChatsBtn').addEventListener('click', () => {
             mainApp.classList.remove('mobile-view-chat');
         });
-        
-        // Auto open on load for demo
         setTimeout(() => { if(window.innerWidth <= 1024) openMobileChat(); }, 300);
+
+        // Section Switcher (Left Menu)
+        window.switchSection = function(section) {
+            // Reset Button Styles
+            document.querySelectorAll('.menu-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-glass-active', 'text-white');
+                btn.classList.add('hover:bg-glass-hover', 'text-white/60');
+            });
+            // Activate Selected Button
+            const activeBtn = document.getElementById('nav-' + section);
+            if(activeBtn) {
+                activeBtn.classList.remove('hover:bg-glass-hover', 'text-white/60');
+                activeBtn.classList.add('bg-glass-active', 'text-white');
+            }
+
+            // Hide all views, show selected
+            ['chats', 'marketplace', 'requests', 'archive'].forEach(s => {
+                document.getElementById(s + '-view').classList.add('hidden');
+            });
+            document.getElementById(section + '-view').classList.remove('hidden');
+
+            // Update Column 2 Header
+            const titles = {
+                'chats': 'Chats',
+                'marketplace': 'Marketplace',
+                'requests': 'Message Requests',
+                'archive': 'Archived Chats'
+            };
+            document.getElementById('desktop-col-list-title').textContent = titles[section];
+            document.getElementById('mobile-col-list-title').textContent = titles[section];
+        };
+
+        // Communities / Chat Swapping Logic
+        window.switchCommunity = function(name) {
+            document.getElementById('chat-header-title').textContent = name;
+            
+            // Set dynamic icon based on community selection
+            const iconEl = document.getElementById('chat-header-icon');
+            if(name.includes('Global')) iconEl.className = 'fas fa-globe text-xl absolute';
+            else if(name.includes('Web')) iconEl.className = 'fas fa-code text-xl absolute';
+            else iconEl.className = 'fas fa-pen-nib text-xl absolute';
+
+            // Clear chat and show visual system message
+            messagesContainer.innerHTML = `
+                <div class="text-center my-6">
+                    <span class="bg-black/30 backdrop-blur-md text-white/50 text-[10px] uppercase tracking-widest font-semibold px-4 py-1.5 rounded-full border border-white/5">Joined ${name}</span>
+                </div>
+            `;
+            // Re-bind specific listeners if implementing multi-channel DB logic
+            listenForMessages(); 
+        };
+
+        // Call Overlays Logic (Video / Voice)
+        let callTimerInterval;
+        let callSeconds = 0;
+
+        window.startCall = function(type) {
+            const overlay = document.getElementById('callOverlay');
+            const typeLabel = document.getElementById('callTypeLabel');
+            const timerLabel = document.getElementById('callTimer');
+            const nameLabel = document.getElementById('callNameLabel');
+            
+            // Map context
+            nameLabel.textContent = document.getElementById('chat-header-title').textContent;
+            typeLabel.textContent = type === 'video' ? 'Outgoing Video Call...' : 'Outgoing Voice Call...';
+            timerLabel.textContent = 'Calling...';
+            callSeconds = 0;
+
+            overlay.classList.remove('hidden');
+            // Force browser reflow to ensure transition runs
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+
+            // Simulate call picking up
+            setTimeout(() => {
+                if(!overlay.classList.contains('hidden')) {
+                    typeLabel.textContent = type === 'video' ? 'Video Call Active' : 'Voice Call Active';
+                    callTimerInterval = setInterval(() => {
+                        callSeconds++;
+                        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                        const secs = String(callSeconds % 60).padStart(2, '0');
+                        timerLabel.textContent = `${mins}:${secs}`;
+                    }, 1000);
+                }
+            }, 2500);
+        };
+
+        window.endCall = function() {
+            const overlay = document.getElementById('callOverlay');
+            clearInterval(callTimerInterval);
+            
+            document.getElementById('callTypeLabel').textContent = 'Call Ended';
+            document.getElementById('callTimer').textContent = '';
+            
+            setTimeout(() => {
+                overlay.classList.remove('opacity-100');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 500); // Wait for CSS transition
+            }, 800);
+        };
+
+
+        // ---- FIREBASE LOGIC ----
 
         // 1. Auth Listener
         onAuthStateChanged(auth, async (user) => {
@@ -445,10 +659,10 @@
                 const mobAv = document.getElementById('myAvatarMobile');
                 if(mobAv) mobAv.src = currentUserAvatar;
 
-                // Load Chat
                 listenForMessages();
             } else {
-                window.location.href = 'login.html';
+                console.log("Not logged in. Running preview mode.");
+                listenForMessages(); 
             }
         });
 
@@ -458,7 +672,8 @@
             const q = query(messagesRef, orderBy("timestamp", "asc"));
 
             onSnapshot(q, (snapshot) => {
-                if (loadingMessages) loadingMessages.style.display = 'none';
+                const loader = document.getElementById('loadingMessages');
+                if (loader) loader.style.display = 'none';
                 
                 const messagesList = [];
                 snapshot.forEach((doc) => {
@@ -468,7 +683,8 @@
                 renderMessages(messagesList);
             }, (error) => {
                 console.error("Error fetching messages:", error);
-                loadingMessages.innerHTML = `<p class="text-red-400 text-xs bg-red-500/10 p-3 rounded-xl border border-red-500/20">Error connecting to chat server.</p>`;
+                const loader = document.getElementById('loadingMessages');
+                if(loader) loader.innerHTML = `<p class="text-red-400 text-xs bg-red-500/10 p-3 rounded-xl border border-red-500/20">Check Firestore Rules: Read/Write Access Denied.</p>`;
             });
         }
 
@@ -480,7 +696,7 @@
             let lastSenderId = null;
 
             messages.forEach((msg, index) => {
-                const isMe = msg.senderId === currentUser.uid;
+                const isMe = currentUser && msg.senderId === currentUser.uid;
                 const isSameAsLast = lastSenderId === msg.senderId;
                 lastSenderId = msg.senderId;
                 
@@ -498,7 +714,7 @@
                     <div class="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-auto border border-white/10 shadow-sm">
                         <img src="${msg.senderAvatar || 'https://ui-avatars.com/api/?name='+msg.senderName+'&background=3b82f6&color=fff'}" class="w-full h-full object-cover">
                     </div>
-                ` : (!isMe ? `<div class="w-8 shrink-0"></div>` : ''); // Spacer for alignment
+                ` : (!isMe ? `<div class="w-8 shrink-0"></div>` : '');
 
                 const nameHtml = (!isMe && !isSameAsLast) ? `
                     <div class="text-[11px] font-bold text-white/60 mb-1 ml-1">${msg.senderName}</div>
@@ -551,7 +767,7 @@
                 scrollToBottom();
             } catch(error) {
                 console.error("Error sending message: ", error);
-                alert("Message failed to send. Please try again.");
+                alert("Message failed to send. Please check your network and Firestore rules.");
             } finally {
                 sendBtn.disabled = false;
                 messageInput.focus();
