@@ -690,7 +690,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, arrayUnion, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // FIREBASE CONFIG
         const firebaseConfig = {
@@ -946,7 +946,20 @@
             const q = query(collection(db, "group_chats", groupId, "messages"), orderBy("timestamp", "asc"));
             activeMessagesUnsubscribe = onSnapshot(q, (snapshot) => {
                 currentMessages = [];
-                snapshot.forEach(d => currentMessages.push({ id: d.id, ...d.data() }));
+                snapshot.forEach(d => {
+                    const data = d.data();
+                    currentMessages.push({ id: d.id, ...data });
+                    
+                    // Mark messages as seen if they aren't ours and we haven't seen them yet
+                    if (data.type !== 'system' && data.senderId !== currentUser.uid) {
+                        const seenBy = data.seenBy || [];
+                        if (!seenBy.includes(currentUser.uid)) {
+                            updateDoc(doc(db, "group_chats", groupId, "messages", d.id), {
+                                seenBy: arrayUnion(currentUser.uid)
+                            }).catch(e => console.error("Error marking seen:", e));
+                        }
+                    }
+                });
                 renderMessages(currentMessages);
             });
         };
@@ -1115,6 +1128,18 @@
                 }
             } catch(e) { console.error(e); }
         }
+        
+        window.deleteMessage = async function(messageId) {
+            if(!activeGroupId || !currentUser) return;
+            if(confirm("Delete this message for everyone?")) {
+                try {
+                    await deleteDoc(doc(db, "group_chats", activeGroupId, "messages", messageId));
+                } catch(error) {
+                    console.error("Error deleting message:", error);
+                    alert("Failed to delete message. Check permissions.");
+                }
+            }
+        };
 
         // 8. Message Rendering & Sending
         function renderMessages(messages, filterText = "") {
@@ -1162,16 +1187,48 @@
 
                 const nameHtml = (!isMe && !isSameAsLast) ? `<div class="text-[11px] font-bold text-white/60 mb-1 ml-1">${msg.senderName}</div>` : '';
                 const marginClass = isSameAsLast ? "mt-1" : "mt-4";
+                
+                // Read Receipts logic
+                let readReceiptHtml = '';
+                if (isMe) {
+                    // Assuming total members in group minus sender
+                    const totalMembers = activeGroupData ? (activeGroupData.members || []).length : 1;
+                    const seenCount = (msg.seenBy || []).length;
+                    
+                    if (seenCount > 0) {
+                        if (seenCount >= (totalMembers - 1) && totalMembers > 1) {
+                            // Everyone has seen it
+                            readReceiptHtml = `<i class="fas fa-check-double text-blue-400 text-[10px] ml-1"></i>`;
+                        } else {
+                            // Delivered / Some have seen it
+                            readReceiptHtml = `<i class="fas fa-check-double text-white/40 text-[10px] ml-1"></i>`;
+                        }
+                    } else {
+                        // Sent
+                        readReceiptHtml = `<i class="fas fa-check text-white/40 text-[10px] ml-1"></i>`;
+                    }
+                }
+                
+                // Delete button (only for sender or admin)
+                let deleteHtml = '';
+                const isAdmin = activeGroupData && (activeGroupData.admins || []).includes(currentUser.uid);
+                if (isMe || isAdmin) {
+                     deleteHtml = `<button onclick="deleteMessage('${msg.id}')" class="hidden group-hover:flex items-center justify-center w-6 h-6 rounded-full bg-black/40 hover:bg-red-500/80 text-white/60 hover:text-white transition-colors absolute ${isMe ? '-left-8' : '-right-8'} top-1/2 -translate-y-1/2"><i class="fas fa-trash text-[10px]"></i></button>`;
+                }
 
                 container.innerHTML += `
-                    <div class="flex w-full ${alignClass} gap-2 ${marginClass} message-wrapper px-2 md:px-6">
+                    <div class="flex w-full ${alignClass} gap-2 ${marginClass} message-wrapper px-2 md:px-6 group relative">
                         ${avatarHtml}
-                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]">
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%] relative">
                             ${nameHtml}
-                            <div class="${bubbleColor} px-4 py-2.5 shadow-lg flex flex-col min-w-[80px]">
-                                <span class="text-[14px] leading-relaxed ${textColor} break-words">${msg.text}</span>
-                                <span class="text-[9px] font-medium text-white/40 self-end mt-1">${timeString}</span>
+                            <div class="${bubbleColor} px-4 py-2.5 shadow-lg flex flex-col min-w-[80px] relative">
+                                <span class="text-[14px] leading-relaxed ${textColor} break-words pr-2">${msg.text}</span>
+                                <div class="flex items-center justify-end mt-1 gap-1">
+                                    <span class="text-[9px] font-medium text-white/40">${timeString}</span>
+                                    ${readReceiptHtml}
+                                </div>
                             </div>
+                            ${deleteHtml}
                         </div>
                     </div>
                 `;
@@ -1202,7 +1259,8 @@
                     senderId: currentUser.uid,
                     senderName: currentUserName,
                     senderAvatar: currentUserAvatar,
-                    timestamp: serverTimestamp()
+                    timestamp: serverTimestamp(),
+                    seenBy: [] // Initialize empty seen array
                 });
                 scrollToBottom();
             } catch(error) {
