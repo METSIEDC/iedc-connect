@@ -2,8 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f1115">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>IEDC Connect | Spatial Chat</title>
+    
+    <!-- PWA Manifest Injection -->
+    <script>
+        const manifest = {
+            "name": "IEDC Connect",
+            "short_name": "Connect",
+            "description": "MET's IEDC Real-time Community Chat",
+            "start_url": "./iedc-chat.html",
+            "display": "standalone",
+            "background_color": "#0f1115",
+            "theme_color": "#0f1115",
+            "icons": [
+                {
+                    "src": "https://ui-avatars.com/api/?name=IC&background=3b82f6&color=fff&size=192",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "https://ui-avatars.com/api/?name=IC&background=3b82f6&color=fff&size=512",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestURL}">`);
+        
+        // Simple Service Worker Registration for PWA Installability
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // Creates a dummy service worker just to pass PWA install criteria
+                const swCode = `
+                    self.addEventListener('install', (e) => { self.skipWaiting(); });
+                    self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
+                    self.addEventListener('fetch', (e) => { });
+                `;
+                const swBlob = new Blob([swCode], {type: 'application/javascript'});
+                const swUrl = URL.createObjectURL(swBlob);
+                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration failed: ', err));
+            });
+        }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -49,6 +97,9 @@
             font-family: 'Inter', sans-serif;
             overflow: hidden;
             color: #ffffff;
+            /* PWA specific adjustments */
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .bg-overlay {
@@ -80,6 +131,8 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             color: white;
             transition: all 0.3s ease;
+            -webkit-user-select: text;
+            user-select: text;
         }
         .glass-input:focus {
             background: rgba(0, 0, 0, 0.5);
@@ -132,6 +185,16 @@
             .mobile-view-chat #col-chat { display: flex; }
             #col-chat { display: none; }
             #col-list { display: flex; width: 100%; }
+            
+            /* PWA specific padding for mobile notches */
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            .app-container {
+                border-radius: 0;
+                border: none;
+            }
         }
 
         .spinner {
@@ -145,13 +208,13 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="h-screen w-screen flex items-center justify-center p-2 sm:p-6 lg:p-12 relative">
+<body class="h-screen w-screen flex items-center justify-center p-0 lg:p-12 relative">
 
     <div class="bg-overlay"></div>
 
     <!-- REAL CALL OVERLAY (Modified to host Jitsi iframe) -->
-    <div id="callOverlay" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[1000] hidden flex-col items-center justify-center p-2 md:p-8 transition-opacity duration-500 opacity-0">
-        <div class="w-full h-full max-w-[1400px] relative bg-[#0f1115] border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
+    <div id="callOverlay" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[1000] hidden flex-col items-center justify-center p-0 lg:p-8 transition-opacity duration-500 opacity-0">
+        <div class="w-full h-full max-w-[1400px] relative bg-[#0f1115] border-0 lg:border border-white/10 lg:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
             
             <!-- Call Header -->
             <div class="p-4 md:px-8 md:py-4 flex justify-between items-center bg-white/5 border-b border-white/5 shrink-0 z-10 relative backdrop-blur-md">
@@ -183,15 +246,15 @@
     <!-- MODALS -->
 
     <!-- Create Group Modal -->
-    <div id="createGroupModal" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-4 transition-opacity opacity-0">
+    <div id="createGroupModal" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-4 transition-opacity opacity-0 pt-[env(safe-area-inset-top)]">
         <div class="bg-[#151515] border border-white/10 w-full max-w-md rounded-3xl p-8 shadow-2xl relative transform transition-transform scale-95 duration-300">
-            <button onclick="closeModal('createGroupModal')" class="absolute top-6 right-6 text-white/50 hover:text-white"><i class="fas fa-times"></i></button>
+            <button onclick="closeModal('createGroupModal')" class="absolute top-6 right-6 text-white/50 hover:text-white p-2"><i class="fas fa-times"></i></button>
             <h2 class="text-xl font-bold text-white mb-6">Create New Group</h2>
             <form id="createGroupForm" class="space-y-5">
                 <div class="flex justify-center mb-6">
-                    <div class="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/30 text-3xl relative cursor-pointer hover:bg-white/10 transition">
+                    <div class="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/30 text-3xl relative cursor-pointer hover:bg-white/10 transition group">
                         <i class="fas fa-camera"></i>
-                        <input type="text" id="newGroupIcon" placeholder="Image URL (optional)" class="absolute -bottom-8 w-48 glass-input text-xs rounded py-1 px-2 text-center opacity-0 group-hover:opacity-100">
+                        <input type="text" id="newGroupIcon" placeholder="Image URL (optional)" class="absolute -bottom-8 w-48 glass-input text-xs rounded py-1 px-2 text-center opacity-0 group-hover:opacity-100 transition-opacity">
                     </div>
                 </div>
                 <div>
@@ -202,7 +265,7 @@
                     <label class="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-2 block">Description</label>
                     <textarea id="newGroupDesc" rows="2" class="glass-input w-full rounded-xl py-3 px-4 text-sm" placeholder="Group purpose..."></textarea>
                 </div>
-                <button type="submit" id="createGroupBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2">
+                <button type="submit" id="createGroupBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2 mt-2">
                     Create Group
                 </button>
             </form>
@@ -210,9 +273,9 @@
     </div>
 
     <!-- Customization / Theme Modal -->
-    <div id="themeModal" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-4 transition-opacity opacity-0">
+    <div id="themeModal" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden flex items-center justify-center p-4 transition-opacity opacity-0 pt-[env(safe-area-inset-top)]">
         <div class="bg-[#151515] border border-white/10 w-full max-w-md rounded-3xl p-8 shadow-2xl relative transform transition-transform scale-95 duration-300">
-            <button onclick="closeModal('themeModal')" class="absolute top-6 right-6 text-white/50 hover:text-white"><i class="fas fa-times"></i></button>
+            <button onclick="closeModal('themeModal')" class="absolute top-6 right-6 text-white/50 hover:text-white p-2"><i class="fas fa-times"></i></button>
             <h2 class="text-xl font-bold text-white mb-6">Chat Customization</h2>
             
             <div class="space-y-6">
@@ -250,11 +313,19 @@
         </div>
     </div>
 
+    <!-- Install PWA Prompt (Hidden by default, shown if installable) -->
+    <div id="pwaInstallBanner" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full shadow-2xl z-[3000] flex items-center gap-4 transition-transform translate-y-[-150%]">
+        <i class="fas fa-download"></i>
+        <span class="text-sm font-semibold whitespace-nowrap">Install IEDC Connect App</span>
+        <button id="pwaInstallBtn" class="bg-white text-blue-600 px-3 py-1 rounded-full text-xs font-bold ml-2">Install</button>
+        <button onclick="document.getElementById('pwaInstallBanner').style.display='none'" class="text-white/70 hover:text-white ml-2"><i class="fas fa-times"></i></button>
+    </div>
+
     <!-- Main Application UI -->
     <div class="w-full max-w-[1500px] h-full flex items-center relative z-10">
         
         <!-- Floating Action Bar (Far Left) -->
-        <div class="floating-nav hidden xl:flex flex-col items-center gap-6 py-6 px-3 rounded-[30px] mr-6 z-20">
+        <div class="floating-nav hidden xl:flex flex-col items-center gap-6 py-6 px-3 rounded-[30px] mr-6 z-20 h-[90%]">
             <button onclick="switchSection('chats')" class="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-lg transition hover:bg-white/20">
                 <i class="fas fa-comment text-lg"></i>
             </button>
@@ -275,7 +346,7 @@
         </div>
 
         <!-- Main 3-Pane Application Window -->
-        <div id="main-app" class="app-container w-full h-full rounded-[2rem] lg:rounded-[40px] flex overflow-hidden relative">
+        <div id="main-app" class="app-container w-full h-full lg:h-[95%] lg:rounded-[40px] flex overflow-hidden relative">
             
             <!-- Column 1: Navigation & Communities (Hidden on small screens) -->
             <div class="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-glass-border p-6 h-full relative z-10">
@@ -327,14 +398,17 @@
             </div>
 
             <!-- Column 2: Chat List -->
-            <div id="col-list" class="w-full lg:w-[340px] flex flex-col border-r border-glass-border shrink-0 h-full bg-glass-panel lg:bg-transparent relative z-10">
+            <div id="col-list" class="w-full lg:w-[340px] flex flex-col border-r border-glass-border shrink-0 h-full bg-glass-panel lg:bg-transparent relative z-10 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                 
                 <div class="lg:hidden flex items-center justify-between p-6 pb-2 border-b border-white/5">
                     <div class="flex items-center gap-3">
                         <img id="myAvatarMobile" src="https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff" class="w-8 h-8 rounded-full">
                         <h2 id="mobile-col-list-title" class="text-white font-semibold">Chats</h2>
                     </div>
-                    <button onclick="openModal('createGroupModal')" class="w-8 h-8 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center"><i class="fas fa-plus"></i></button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openModal('themeModal')" class="w-8 h-8 text-white/60 hover:text-white flex items-center justify-center"><i class="fas fa-paint-brush"></i></button>
+                        <button onclick="openModal('createGroupModal')" class="w-8 h-8 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center ml-2"><i class="fas fa-plus"></i></button>
+                    </div>
                 </div>
 
                 <div class="hidden lg:flex px-6 py-5 border-b border-glass-border shrink-0 items-center justify-between">
@@ -437,10 +511,26 @@
                     </div>
                 </div>
 
+                <!-- Mobile bottom nav (Appears only on mobile) -->
+                <div class="lg:hidden shrink-0 border-t border-white/10 bg-white/5 backdrop-blur-xl flex justify-around p-3 z-20">
+                    <button onclick="switchSection('chats')" class="flex flex-col items-center gap-1 text-white/60 hover:text-white p-2 w-16">
+                        <i class="fas fa-comment text-lg"></i>
+                        <span class="text-[9px]">Chats</span>
+                    </button>
+                    <button onclick="switchSection('requests')" class="flex flex-col items-center gap-1 text-white/60 hover:text-white p-2 w-16 relative">
+                        <i class="fas fa-user-friends text-lg"></i>
+                        <span class="text-[9px]">Requests</span>
+                        <span class="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <button id="mobileLogoutBtn" class="flex flex-col items-center gap-1 text-white/60 hover:text-red-400 p-2 w-16">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                        <span class="text-[9px]">Logout</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Column 3: Active Chat Area -->
-            <div id="col-chat" class="w-full flex-grow flex-col h-full bg-glass-panel lg:bg-transparent relative overflow-hidden">
+            <div id="col-chat" class="w-full flex-grow flex-col h-full bg-glass-panel lg:bg-transparent relative overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                 
                 <!-- Initial State (No Chat Selected) -->
                 <div id="emptyChatState" class="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/20 backdrop-blur-sm">
@@ -454,28 +544,28 @@
                 <!-- Active Chat Elements -->
                 <div id="activeChatContainer" class="flex flex-col h-full hidden relative z-10">
                     <!-- Chat Header -->
-                    <header class="h-[88px] border-b border-glass-border flex items-center justify-between px-6 shrink-0 bg-white/5 backdrop-blur-md z-30 cursor-pointer hover:bg-white/10 transition-colors" onclick="toggleGroupInfo()">
-                        <div class="flex items-center gap-4">
-                            <button id="backToChatsBtn" class="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white mr-1 hover:bg-white/20 transition" onclick="event.stopPropagation(); closeMobileChat()">
+                    <header class="h-[72px] md:h-[88px] border-b border-glass-border flex items-center justify-between px-4 md:px-6 shrink-0 bg-white/5 backdrop-blur-md z-30 cursor-pointer hover:bg-white/10 transition-colors" onclick="toggleGroupInfo()">
+                        <div class="flex items-center gap-3 md:gap-4 overflow-hidden">
+                            <button id="backToChatsBtn" class="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white mr-1 hover:bg-white/20 transition shrink-0" onclick="event.stopPropagation(); closeMobileChat()">
                                 <i class="fas fa-arrow-left text-sm"></i>
                             </button>
-                            <div class="w-12 h-12 rounded-full border border-white/20 bg-[#0f1115] flex items-center justify-center text-white shadow-lg overflow-hidden shrink-0">
+                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/20 bg-[#0f1115] flex items-center justify-center text-white shadow-lg overflow-hidden shrink-0">
                                 <img id="activeChatIcon" src="" class="w-full h-full object-cover opacity-90" onerror="this.src='https://ui-avatars.com/api/?name=Group&background=3b82f6&color=fff'">
                             </div>
                             <div class="overflow-hidden">
-                                <h2 id="activeChatTitle" class="text-lg font-semibold text-white leading-tight truncate">Select a Chat</h2>
-                                <p id="activeChatMembersText" class="text-[11px] text-white/50 font-medium mt-0.5 truncate">Click here for group info</p>
+                                <h2 id="activeChatTitle" class="text-base md:text-lg font-semibold text-white leading-tight truncate">Select a Chat</h2>
+                                <p id="activeChatMembersText" class="text-[10px] md:text-[11px] text-white/50 font-medium mt-0.5 truncate">Click here for group info</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3 text-white/60">
-                            <button onclick="event.stopPropagation(); toggleInChatSearch()" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition"><i class="fas fa-search text-sm"></i></button>
-                            <button onclick="event.stopPropagation(); startCall('video')" title="Video Call" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5"><i class="fas fa-video text-sm text-blue-400"></i></button>
-                            <button onclick="event.stopPropagation(); startCall('audio')" title="Voice Call" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5 hidden sm:flex"><i class="fas fa-phone text-sm text-blue-400"></i></button>
+                        <div class="flex items-center gap-1 md:gap-3 text-white/60 shrink-0">
+                            <button onclick="event.stopPropagation(); toggleInChatSearch()" class="w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition"><i class="fas fa-search text-sm"></i></button>
+                            <button onclick="event.stopPropagation(); startCall('video')" title="Video Call" class="w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5"><i class="fas fa-video text-sm text-blue-400"></i></button>
+                            <button onclick="event.stopPropagation(); startCall('audio')" title="Voice Call" class="w-8 h-8 md:w-10 md:h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5 hidden sm:flex"><i class="fas fa-phone text-sm text-blue-400"></i></button>
                         </div>
                     </header>
 
                     <!-- In-Chat Search Overlay -->
-                    <div id="inChatSearchBox" class="hidden absolute top-[88px] w-full bg-black/80 backdrop-blur-xl border-b border-white/10 p-3 flex gap-2 z-20">
+                    <div id="inChatSearchBox" class="hidden absolute top-[72px] md:top-[88px] w-full bg-black/80 backdrop-blur-xl border-b border-white/10 p-3 flex gap-2 z-20">
                         <input type="text" id="messageSearchInput" placeholder="Search in this chat..." class="glass-input flex-grow rounded-lg py-2 px-4 text-sm">
                         <button onclick="toggleInChatSearch()" class="px-4 text-white/50 hover:text-white text-xs font-bold uppercase">Close</button>
                     </div>
@@ -494,16 +584,16 @@
                     </div>
 
                     <!-- Input Area -->
-                    <footer id="chatFooter" class="p-4 md:p-6 shrink-0 bg-white/5 backdrop-blur-xl border-t border-glass-border z-20">
-                        <form id="chatForm" class="flex items-end gap-3 max-w-5xl mx-auto">
-                            <button type="button" class="w-12 h-12 rounded-full hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white shrink-0 transition">
+                    <footer id="chatFooter" class="p-3 md:p-6 shrink-0 bg-white/5 backdrop-blur-xl border-t border-glass-border z-20">
+                        <form id="chatForm" class="flex items-end gap-2 md:gap-3 max-w-5xl mx-auto relative">
+                            <button type="button" class="w-10 h-10 md:w-12 md:h-12 rounded-full hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white shrink-0 transition">
                                 <i class="fas fa-plus text-lg"></i>
                             </button>
                             
-                            <div class="flex-grow relative flex items-center bg-black/40 border border-white/10 rounded-3xl p-1 pr-2 shadow-inner focus-within:border-white/30 focus-within:bg-black/60 transition-all">
-                                <input type="text" id="messageInput" class="w-full bg-transparent outline-none text-sm text-white placeholder-white/40 py-3 px-4" placeholder="Type a message..." autocomplete="off">
-                                <button type="submit" id="sendBtn" class="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shrink-0 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <i class="fas fa-paper-plane text-sm -ml-0.5 mt-0.5"></i>
+                            <div class="flex-grow relative flex items-center bg-black/40 border border-white/10 rounded-3xl p-1 pr-1.5 md:pr-2 shadow-inner focus-within:border-white/30 focus-within:bg-black/60 transition-all min-h-[44px]">
+                                <input type="text" id="messageInput" class="w-full bg-transparent outline-none text-sm md:text-base text-white placeholder-white/40 py-2 md:py-3 px-3 md:px-4" placeholder="Message..." autocomplete="off">
+                                <button type="submit" id="sendBtn" class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shrink-0 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-paper-plane text-xs md:text-sm -ml-0.5 mt-0.5"></i>
                                 </button>
                             </div>
                         </form>
@@ -526,7 +616,7 @@
                                 <i class="fas fa-camera"></i>
                             </div>
                         </div>
-                        <h2 id="infoGroupName" class="text-2xl font-bold text-white mb-1">Group Name</h2>
+                        <h2 id="infoGroupName" class="text-2xl font-bold text-white mb-1 px-4 text-balance">Group Name</h2>
                         <p id="infoGroupMembersCount" class="text-white/50 text-xs uppercase tracking-widest font-semibold">1 Member</p>
                     </div>
 
@@ -534,9 +624,9 @@
                     <div class="p-6 border-b border-white/5">
                         <div class="flex justify-between items-center mb-3">
                             <h4 class="text-[10px] text-blue-400 uppercase tracking-widest font-bold">Description</h4>
-                            <button id="editDescBtn" class="hidden text-white/40 hover:text-white" onclick="promptEditDesc()"><i class="fas fa-pen text-xs"></i></button>
+                            <button id="editDescBtn" class="hidden text-white/40 hover:text-white p-2" onclick="promptEditDesc()"><i class="fas fa-pen text-xs"></i></button>
                         </div>
-                        <p id="infoGroupDesc" class="text-white/70 text-sm font-light leading-relaxed">No description provided.</p>
+                        <p id="infoGroupDesc" class="text-white/70 text-sm font-light leading-relaxed break-words">No description provided.</p>
                     </div>
 
                     <!-- Media -->
@@ -556,7 +646,7 @@
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <p class="text-white text-sm font-medium">Edit Group Info</p>
-                                <p class="text-white/40 text-[10px] mt-0.5">Who can change name, icon, desc.</p>
+                                <p class="text-white/40 text-[10px] mt-0.5 max-w-[200px]">Who can change name, icon, desc.</p>
                             </div>
                             <select id="settingEditInfo" onchange="updateGroupSetting('editInfo', this.value)" class="bg-black/50 border border-white/10 text-white text-xs rounded-lg py-1 px-2 outline-none">
                                 <option value="all">All Members</option>
@@ -581,7 +671,7 @@
                     </div>
 
                     <!-- Member List -->
-                    <div class="p-6 flex-grow">
+                    <div class="p-6 flex-grow pb-24">
                         <h4 class="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-4">Members</h4>
                         <div id="infoMembersList" class="space-y-4">
                             <!-- Members injected here -->
@@ -595,6 +685,31 @@
 
     <!-- Global UI Scripts (Must be outside module so HTML onclicks can find them) -->
     <script>
+        // PWA Installation Logic
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI notify the user they can install the PWA
+            const installBanner = document.getElementById('pwaInstallBanner');
+            installBanner.classList.remove('translate-y-[-150%]');
+            installBanner.classList.add('translate-y-0');
+        });
+
+        document.getElementById('pwaInstallBtn').addEventListener('click', async () => {
+            const installBanner = document.getElementById('pwaInstallBanner');
+            installBanner.style.display = 'none';
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+            }
+        });
+
+
         // UI Navigation Logic
         window.switchSection = function(section) {
             // Reset Button Styles
@@ -641,7 +756,58 @@
             document.getElementById('main-app').classList.remove('mobile-view-chat');
         }
 
-        // REAL VIDEO/VOICE CALL LOGIC WILL BE INJECTED FROM THE MODULE SCRIPT
+        // Call Overlays Logic (Video / Voice)
+        let callTimerInterval;
+        let callSeconds = 0;
+
+        window.startCall = function(type) {
+            const overlay = document.getElementById('callOverlay');
+            const typeLabel = document.getElementById('callTypeLabel');
+            const timerLabel = document.getElementById('callTimer');
+            const nameLabel = document.getElementById('callNameLabel');
+            const headerTitle = document.getElementById('activeChatTitle');
+            
+            // Map context
+            nameLabel.textContent = headerTitle ? headerTitle.textContent : "Unknown Call";
+            typeLabel.textContent = type === 'video' ? 'Outgoing Video Call...' : 'Outgoing Voice Call...';
+            timerLabel.textContent = 'Calling...';
+            callSeconds = 0;
+
+            overlay.classList.remove('hidden');
+            // Force browser reflow to ensure transition runs
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+
+            // Simulate call picking up
+            setTimeout(() => {
+                if(!overlay.classList.contains('hidden')) {
+                    typeLabel.textContent = type === 'video' ? 'Video Call Active' : 'Voice Call Active';
+                    callTimerInterval = setInterval(() => {
+                        callSeconds++;
+                        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                        const secs = String(callSeconds % 60).padStart(2, '0');
+                        timerLabel.textContent = `${mins}:${secs}`;
+                    }, 1000);
+                }
+            }, 2500);
+        };
+
+        window.endCall = function() {
+            const overlay = document.getElementById('callOverlay');
+            clearInterval(callTimerInterval);
+            
+            document.getElementById('callTypeLabel').textContent = 'Call Ended';
+            document.getElementById('callTimer').textContent = '';
+            
+            setTimeout(() => {
+                overlay.classList.remove('opacity-100');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 500); // Wait for CSS transition
+            }, 800);
+        };
     </script>
 
     <!-- Firebase Application Logic -->
@@ -840,8 +1006,8 @@
                     const subtitle = isMember ? "Tap to chat" : "Tap to join";
 
                     html += `
-                        <div onclick="openGroup('${data.id}')" class="flex items-center gap-4 p-3 rounded-2xl cursor-pointer group transition-all ${memberClass}">
-                            <div class="w-12 h-12 rounded-full border border-white/10 bg-[#0f1115] flex flex-col items-center justify-center text-white shrink-0 shadow-lg relative overflow-hidden group-hover:scale-105 transition-transform">
+                        <div onclick="openGroup('${data.id}')" class="flex items-center gap-3 p-3 rounded-2xl cursor-pointer group transition-all ${memberClass}">
+                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/10 bg-[#0f1115] flex flex-col items-center justify-center text-white shrink-0 shadow-lg relative overflow-hidden group-hover:scale-105 transition-transform">
                                 <img src="${data.iconUrl || 'https://ui-avatars.com/api/?name='+data.name+'&background=3b82f6&color=fff'}" class="w-full h-full object-cover opacity-90">
                             </div>
                             <div class="flex-grow overflow-hidden">
@@ -875,8 +1041,8 @@
             let html = '';
             allGroups.filter(g => g.name.toLowerCase().includes(val)).forEach(data => {
                 html += `
-                    <div onclick="openGroup('${data.id}')" class="flex items-center gap-4 p-3 rounded-2xl cursor-pointer bg-glass-active transition-all">
-                        <div class="w-12 h-12 rounded-full bg-[#0f1115] overflow-hidden"><img src="${data.iconUrl}" class="w-full h-full object-cover"></div>
+                    <div onclick="openGroup('${data.id}')" class="flex items-center gap-3 p-3 rounded-2xl cursor-pointer bg-glass-active transition-all">
+                        <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#0f1115] overflow-hidden"><img src="${data.iconUrl}" class="w-full h-full object-cover"></div>
                         <div class="flex-grow overflow-hidden"><h4 class="text-white font-semibold text-sm truncate">${data.name}</h4></div>
                     </div>`;
             });
@@ -1352,10 +1518,23 @@
         };
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
+            const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+            if (mobileLogoutBtn) {
+                mobileLogoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-lg"></i><span class="text-[9px]">Logging out...</span>';
+            }
+            
             await signOut(auth);
-            window.location.href = 'login.html';
+            window.location.href = 'connect-login.html';
         });
 
+        const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+        if (mobileLogoutBtn) {
+            mobileLogoutBtn.addEventListener('click', async () => {
+                mobileLogoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-lg"></i><span class="text-[9px]">Logging out...</span>';
+                await signOut(auth);
+                window.location.href = 'connect-login.html';
+            });
+        }
     </script>
 </body>
 </html>
