@@ -146,6 +146,31 @@
 
     <div class="bg-overlay"></div>
 
+    <!-- CALL OVERLAY (Hidden by default) -->
+    <div id="callOverlay" class="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[1000] hidden flex-col items-center justify-center text-white transition-opacity duration-500 opacity-0">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2000')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
+        <div class="relative z-10 text-center mb-12 flex flex-col items-center">
+            <div id="callAvatar" class="w-32 h-32 rounded-full mb-6 border-4 border-white/10 shadow-[0_0_50px_rgba(59,130,246,0.3)] animate-pulse bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-5xl">
+                <i class="fas fa-globe text-white"></i>
+            </div>
+            <h2 id="callTypeLabel" class="text-blue-400 text-xs font-bold uppercase tracking-[0.2em] mb-2">Calling...</h2>
+            <h1 id="callNameLabel" class="text-4xl md:text-5xl font-bold tracking-tight mb-4">IEDC Global Network</h1>
+            <p id="callTimer" class="text-lg font-mono text-white/70 tracking-widest">Connecting...</p>
+        </div>
+        
+        <div class="relative z-10 flex items-center justify-center gap-6 mt-8">
+            <button class="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-all backdrop-blur-md">
+                <i class="fas fa-microphone text-white"></i>
+            </button>
+            <button class="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-all backdrop-blur-md">
+                <i class="fas fa-video text-white"></i>
+            </button>
+            <button onclick="endCall()" class="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-3xl transition-all shadow-[0_0_30px_rgba(239,68,68,0.5)] transform hover:scale-105">
+                <i class="fas fa-phone-slash text-white"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- MODALS -->
 
     <!-- Create Group Modal -->
@@ -224,8 +249,11 @@
             <button onclick="switchSection('chats')" class="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center shadow-lg transition hover:bg-white/20">
                 <i class="fas fa-comment text-lg"></i>
             </button>
-            <button onclick="openModal('customization')" title="Theme & Wallpaper" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
+            <button onclick="openModal('themeModal')" title="Theme & Wallpaper" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
                 <i class="fas fa-paint-brush text-lg"></i>
+            </button>
+            <button onclick="switchSection('requests')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
+                <i class="fas fa-user-friends text-lg"></i>
             </button>
             <button onclick="switchSection('archive')" class="w-12 h-12 rounded-full text-white/40 hover:text-white flex items-center justify-center transition hover:bg-white/5">
                 <i class="fas fa-archive text-lg"></i>
@@ -254,7 +282,7 @@
                 </div>
 
                 <div class="space-y-1 mb-8">
-                    <button class="menu-nav-btn w-full flex items-center justify-between p-3.5 bg-glass-active text-white rounded-2xl transition">
+                    <button id="nav-chats" onclick="switchSection('chats')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 bg-glass-active text-white rounded-2xl transition">
                         <div class="flex items-center gap-3 text-sm font-medium">
                             <i class="fas fa-comment bg-transparent w-5 text-center"></i> Chats
                         </div>
@@ -262,6 +290,22 @@
                     <button onclick="openModal('createGroupModal')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover text-blue-400 hover:text-blue-300 rounded-2xl transition">
                         <div class="flex items-center gap-3 text-sm font-bold">
                             <i class="fas fa-plus-circle bg-transparent w-5 text-center"></i> New Group
+                        </div>
+                    </button>
+                    <button id="nav-marketplace" onclick="switchSection('marketplace')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
+                        <div class="flex items-center gap-3 text-sm font-medium">
+                            <i class="fas fa-store bg-transparent w-5 text-center"></i> Marketplace
+                        </div>
+                    </button>
+                    <button id="nav-requests" onclick="switchSection('requests')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
+                        <div class="flex items-center gap-3 text-sm font-medium">
+                            <i class="fas fa-comment-dots bg-transparent w-5 text-center"></i> Message requests
+                        </div>
+                        <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>
+                    </button>
+                    <button id="nav-archive" onclick="switchSection('archive')" class="menu-nav-btn w-full flex items-center justify-between p-3.5 hover:bg-glass-hover rounded-2xl transition text-white/60 hover:text-white">
+                        <div class="flex items-center gap-3 text-sm font-medium">
+                            <i class="fas fa-archive bg-transparent w-5 text-center"></i> Archive
                         </div>
                     </button>
                 </div>
@@ -279,13 +323,13 @@
                 <div class="lg:hidden flex items-center justify-between p-6 pb-2 border-b border-white/5">
                     <div class="flex items-center gap-3">
                         <img id="myAvatarMobile" src="https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff" class="w-8 h-8 rounded-full">
-                        <h2 class="text-white font-semibold">Chats</h2>
+                        <h2 id="mobile-col-list-title" class="text-white font-semibold">Chats</h2>
                     </div>
                     <button onclick="openModal('createGroupModal')" class="w-8 h-8 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center"><i class="fas fa-plus"></i></button>
                 </div>
 
                 <div class="hidden lg:flex px-6 py-5 border-b border-glass-border shrink-0 items-center justify-between">
-                    <h2 class="text-xl font-bold text-white tracking-wide">Chats</h2>
+                    <h2 id="desktop-col-list-title" class="text-xl font-bold text-white tracking-wide">Chats</h2>
                 </div>
 
                 <div class="px-6 py-4 shrink-0">
@@ -295,9 +339,95 @@
                     </div>
                 </div>
 
-                <div class="flex-grow overflow-y-auto px-4 py-2 space-y-1" id="chatListContainer">
-                    <!-- Dynamic Groups rendered here -->
+                <!-- SECTION: CHATS (Default) -->
+                <div id="chats-view" class="flex flex-col h-full overflow-hidden">
+                    <div class="flex-grow overflow-y-auto px-4 py-2 space-y-1" id="chatListContainer">
+                        <!-- Dynamic Groups rendered here -->
+                    </div>
                 </div>
+
+                <!-- SECTION: MARKETPLACE -->
+                <div id="marketplace-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-3 hidden">
+                    <div class="flex flex-col gap-1 px-2 mb-2">
+                        <span class="text-[10px] uppercase tracking-widest text-white/40 font-bold">Hardware & Components</span>
+                    </div>
+                    <div class="p-3 rounded-2xl border border-white/5 bg-white/5 glass-hover cursor-pointer flex gap-4 items-center">
+                        <div class="w-16 h-16 rounded-xl bg-[#0a0c0f] flex items-center justify-center shrink-0 border border-white/10">
+                            <i class="fas fa-microchip text-2xl text-blue-400"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-white font-semibold text-sm">Arduino Uno R3</h4>
+                            <p class="text-green-400 text-[11px] font-bold mt-1">₹450 / Rent: Free</p>
+                            <p class="text-white/40 text-[9px] mt-1 uppercase tracking-wider">Posted by Hardware Lab</p>
+                        </div>
+                        <button class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"><i class="fas fa-shopping-cart text-xs"></i></button>
+                    </div>
+                    <div class="p-3 rounded-2xl border border-white/5 bg-white/5 glass-hover cursor-pointer flex gap-4 items-center">
+                        <div class="w-16 h-16 rounded-xl bg-[#0a0c0f] flex items-center justify-center shrink-0 border border-white/10">
+                            <i class="fas fa-cube text-2xl text-purple-400"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-white font-semibold text-sm">3D Printing PLA</h4>
+                            <p class="text-green-400 text-[11px] font-bold mt-1">₹5 / gram</p>
+                            <p class="text-white/40 text-[9px] mt-1 uppercase tracking-wider">Posted by Makerspace</p>
+                        </div>
+                        <button class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"><i class="fas fa-shopping-cart text-xs"></i></button>
+                    </div>
+                </div>
+
+                <!-- SECTION: MESSAGE REQUESTS -->
+                <div id="requests-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-3 hidden">
+                    <div class="p-4 rounded-2xl border border-white/5 bg-white/5 glass-hover flex flex-col gap-3">
+                        <div class="flex items-center gap-3">
+                            <img src="https://ui-avatars.com/api/?name=Startup+Team&background=random" class="w-10 h-10 rounded-full border border-white/10">
+                            <div>
+                                <h4 class="text-white font-semibold text-sm">Fintech Innovators</h4>
+                                <p class="text-white/50 text-[11px]">Wants to connect with you.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-2 rounded-lg transition shadow-lg">Accept</button>
+                            <button class="flex-1 bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold py-2 rounded-lg transition">Decline</button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 rounded-2xl border border-white/5 bg-white/5 glass-hover flex flex-col gap-3">
+                        <div class="flex items-center gap-3">
+                            <img src="https://ui-avatars.com/api/?name=John+Doe&background=random" class="w-10 h-10 rounded-full border border-white/10">
+                            <div>
+                                <h4 class="text-white font-semibold text-sm">John Doe</h4>
+                                <p class="text-white/50 text-[11px]">Project Collaboration</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-2 rounded-lg transition shadow-lg">Accept</button>
+                            <button class="flex-1 bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold py-2 rounded-lg transition">Decline</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: ARCHIVE -->
+                <div id="archive-view" class="flex-grow overflow-y-auto px-4 py-2 space-y-2 hidden opacity-60 hover:opacity-100 transition-opacity">
+                    <div class="flex items-center gap-4 p-3 rounded-2xl bg-white/5 cursor-pointer hover:bg-white/10 transition">
+                        <div class="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white/50 shrink-0">
+                            <i class="fas fa-flag-checkered text-xl"></i>
+                        </div>
+                        <div class="flex-grow overflow-hidden">
+                            <h4 class="text-white/70 font-semibold text-sm truncate">Hackathon 2024</h4>
+                            <p class="text-[11px] text-white/40 truncate">Group closed & archived</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 rounded-2xl bg-white/5 cursor-pointer hover:bg-white/10 transition">
+                        <div class="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white/50 shrink-0">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <div class="flex-grow overflow-hidden">
+                            <h4 class="text-white/70 font-semibold text-sm truncate">Batch 22-26 Orientation</h4>
+                            <p class="text-[11px] text-white/40 truncate">Read-only</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Column 3: Active Chat Area -->
@@ -330,6 +460,8 @@
                         </div>
                         <div class="flex items-center gap-3 text-white/60">
                             <button onclick="event.stopPropagation(); toggleInChatSearch()" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition"><i class="fas fa-search text-sm"></i></button>
+                            <button onclick="event.stopPropagation(); startCall('video')" title="Video Call" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5"><i class="fas fa-video text-sm text-blue-400"></i></button>
+                            <button onclick="event.stopPropagation(); startCall('audio')" title="Voice Call" class="w-10 h-10 rounded-full hover:bg-white/10 hover:text-white flex items-center justify-center transition bg-white/5 border border-white/5 hidden sm:flex"><i class="fas fa-phone text-sm text-blue-400"></i></button>
                         </div>
                     </header>
 
@@ -452,6 +584,109 @@
         </div>
     </div>
 
+    <!-- Global UI Scripts (Must be outside module so HTML onclicks can find them) -->
+    <script>
+        // UI Navigation Logic
+        window.switchSection = function(section) {
+            // Reset Button Styles
+            document.querySelectorAll('.menu-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-glass-active', 'text-white');
+                btn.classList.add('hover:bg-glass-hover', 'text-white/60');
+            });
+            // Activate Selected Button
+            const activeBtn = document.getElementById('nav-' + section);
+            if(activeBtn) {
+                activeBtn.classList.remove('hover:bg-glass-hover', 'text-white/60');
+                activeBtn.classList.add('bg-glass-active', 'text-white');
+            }
+
+            // Hide all views, show selected
+            ['chats', 'marketplace', 'requests', 'archive'].forEach(s => {
+                const el = document.getElementById(s + '-view');
+                if(el) el.classList.add('hidden');
+            });
+            
+            const targetView = document.getElementById(section + '-view');
+            if(targetView) targetView.classList.remove('hidden');
+
+            // Update Column 2 Header
+            const titles = {
+                'chats': 'Chats',
+                'marketplace': 'Marketplace',
+                'requests': 'Message Requests',
+                'archive': 'Archived Chats'
+            };
+            const dtTitle = document.getElementById('desktop-col-list-title');
+            const mbTitle = document.getElementById('mobile-col-list-title');
+            if(dtTitle) dtTitle.textContent = titles[section];
+            if(mbTitle) mbTitle.textContent = titles[section];
+        };
+
+        window.openMobileChat = function() {
+            if (window.innerWidth <= 1024) {
+                document.getElementById('main-app').classList.add('mobile-view-chat');
+            }
+        }
+
+        window.closeMobileChat = function() {
+            document.getElementById('main-app').classList.remove('mobile-view-chat');
+        }
+
+        // Call Overlays Logic (Video / Voice)
+        let callTimerInterval;
+        let callSeconds = 0;
+
+        window.startCall = function(type) {
+            const overlay = document.getElementById('callOverlay');
+            const typeLabel = document.getElementById('callTypeLabel');
+            const timerLabel = document.getElementById('callTimer');
+            const nameLabel = document.getElementById('callNameLabel');
+            const headerTitle = document.getElementById('activeChatTitle');
+            
+            // Map context
+            nameLabel.textContent = headerTitle ? headerTitle.textContent : "Unknown Call";
+            typeLabel.textContent = type === 'video' ? 'Outgoing Video Call...' : 'Outgoing Voice Call...';
+            timerLabel.textContent = 'Calling...';
+            callSeconds = 0;
+
+            overlay.classList.remove('hidden');
+            // Force browser reflow to ensure transition runs
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+
+            // Simulate call picking up
+            setTimeout(() => {
+                if(!overlay.classList.contains('hidden')) {
+                    typeLabel.textContent = type === 'video' ? 'Video Call Active' : 'Voice Call Active';
+                    callTimerInterval = setInterval(() => {
+                        callSeconds++;
+                        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                        const secs = String(callSeconds % 60).padStart(2, '0');
+                        timerLabel.textContent = `${mins}:${secs}`;
+                    }, 1000);
+                }
+            }, 2500);
+        };
+
+        window.endCall = function() {
+            const overlay = document.getElementById('callOverlay');
+            clearInterval(callTimerInterval);
+            
+            document.getElementById('callTypeLabel').textContent = 'Call Ended';
+            document.getElementById('callTimer').textContent = '';
+            
+            setTimeout(() => {
+                overlay.classList.remove('opacity-100');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 500); // Wait for CSS transition
+            }, 800);
+        };
+    </script>
+
+    <!-- Firebase Application Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -490,12 +725,12 @@
         lucide.createIcons();
         initThemes();
 
-        // 1. Theme & Customization Logic
+        // 1. Theme & Customization Logic (Moved to module to avoid duplicate bindings, but exposing needed functions)
         function initThemes() {
             const savedWP = localStorage.getItem('iedc_chat_wp');
             const savedTheme = localStorage.getItem('iedc_chat_theme');
-            if(savedWP) setWallpaper(savedWP, false);
-            if(savedTheme) setBubbleTheme(savedTheme, false);
+            if(savedWP) window.setWallpaper(savedWP, false);
+            if(savedTheme) window.setBubbleTheme(savedTheme, false);
         }
 
         window.openModal = function(id) {
@@ -527,7 +762,7 @@
                 root.style.setProperty('--chat-bg-image', `url('${url}')`);
                 localStorage.setItem('iedc_chat_wp', url);
             }
-            if(showMsg) closeModal('themeModal');
+            if(showMsg) window.closeModal('themeModal');
         };
 
         window.setBubbleTheme = function(color, showMsg = true) {
@@ -543,7 +778,7 @@
                 root.style.setProperty('--bubble-out-border', themes[color].border);
                 localStorage.setItem('iedc_chat_theme', color);
             }
-            if(showMsg) closeModal('themeModal');
+            if(showMsg) window.closeModal('themeModal');
         };
 
         // 2. Auth Flow
@@ -607,11 +842,11 @@
                     timestamp: serverTimestamp()
                 });
 
-                closeModal('createGroupModal');
+                window.closeModal('createGroupModal');
                 document.getElementById('createGroupForm').reset();
                 
                 // Automatically switch to new group
-                setTimeout(() => openGroup(groupRef.id), 500);
+                setTimeout(() => window.openGroup(groupRef.id), 500);
 
             } catch(e) {
                 console.error("Group Creation Error:", e);
@@ -622,8 +857,7 @@
         });
 
         function loadGroups() {
-            // In a production app, use 'where("members", "array-contains", currentUser.uid)'
-            // For IEDC community preview, we load all public groups ordered by creation
+            // Fetch all groups to show in the list
             const q = query(collection(db, "group_chats"), orderBy("createdAt", "desc"));
             
             onSnapshot(q, (snapshot) => {
@@ -637,7 +871,7 @@
                     allGroups.push(data);
                     
                     const isMember = data.members && data.members.includes(currentUser.uid);
-                    // For demo, show even if not member, but opacity lowered
+                    
                     const memberClass = isMember ? "bg-glass-active opacity-100" : "hover:bg-glass-hover opacity-60";
                     const subtitle = isMember ? "Tap to chat" : "Tap to join";
 
@@ -664,7 +898,7 @@
                 sidebarContainer.innerHTML = `<h3 class="text-white/40 text-xs font-semibold mb-4 px-2 tracking-wide">Community Groups</h3>` + html;
             }, e => {
                 console.error("Groups Error:", e);
-                document.getElementById('chatListContainer').innerHTML = `<p class="text-red-400 text-xs p-4">Error loading groups. Add Firestore rules.</p>`;
+                document.getElementById('chatListContainer').innerHTML = `<p class="text-red-400 text-xs p-4">Firebase Error: Permission Denied. Please configure Firestore rules to allow read access.</p>`;
             });
         }
 
@@ -692,7 +926,7 @@
             document.getElementById('activeChatContainer').classList.remove('hidden');
             document.getElementById('groupInfoPanel').classList.remove('open');
             
-            if(window.innerWidth <= 1024) document.getElementById('main-app').classList.add('mobile-view-chat');
+            if(window.innerWidth <= 1024) window.openMobileChat();
 
             // Clean up previous listeners
             if(activeMessagesUnsubscribe) activeMessagesUnsubscribe();
@@ -877,7 +1111,7 @@
                         await updateDoc(doc(db, "group_chats", groupId), { members: arrayUnion(currentUser.uid) });
                         await addDoc(collection(db, "group_chats", groupId, "messages"), { text: `${currentUserName} joined via invite link.`, type: "system", timestamp: serverTimestamp() });
                     }
-                    setTimeout(() => openGroup(groupId), 1000);
+                    setTimeout(() => window.openGroup(groupId), 1000);
                 }
             } catch(e) { console.error(e); }
         }
@@ -995,11 +1229,6 @@
         document.getElementById('messageSearchInput').addEventListener('input', (e) => {
             renderMessages(currentMessages, e.target.value);
         });
-
-        // Misc
-        window.closeMobileChat = function() {
-            document.getElementById('main-app').classList.remove('mobile-view-chat');
-        }
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await signOut(auth);
